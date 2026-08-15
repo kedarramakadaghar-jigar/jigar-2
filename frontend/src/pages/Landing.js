@@ -36,9 +36,9 @@ const howSteps = [
 const WA_ENROLL = "https://wa.me/917777930377?text=" + encodeURIComponent("Hi, I'd like to enrol in the TradeAcademy stock market course. Please share the details.");
 
 const pricing = [
-  { name: "Free", price: "₹0", tag: "Included", features: ["Access to intro modules", "Personal dashboard", "Progress tracking", "Community updates"], cta: "Login", to: "/login", highlight: false },
-  { name: "Full Course", price: "₹3,999", tag: "Most popular", features: ["All 18 modules", "Every lesson & objective", "Downloadable resources", "Live session access"], cta: "Enrol via WhatsApp", to: WA_ENROLL, external: true, highlight: true },
-  { name: "Premium / Advanced", price: "₹6,999", tag: "For serious learners", features: ["Everything in Full Course", "Advanced strategy modules", "Priority live Q&A", "1:1 mentorship"], cta: "Enrol via WhatsApp", to: WA_ENROLL, external: true, highlight: false },
+  { name: "Free", price: "₹0", original: null, save: null, tag: "Included", features: ["Access to intro modules", "Personal dashboard", "Progress tracking", "Community updates"], cta: "Login", to: "/login", highlight: false },
+  { name: "Full Course", price: "₹3,999", original: "₹9,999", save: "60% OFF", tag: "Most popular", features: ["All 18 modules", "Every lesson & objective", "Downloadable resources", "Live session access"], cta: "Enrol via WhatsApp", to: WA_ENROLL, external: true, highlight: true },
+  { name: "Premium / Advanced", price: "₹6,999", original: "₹14,999", save: "53% OFF", tag: "For serious learners", features: ["Everything in Full Course", "Advanced strategy modules", "Priority live Q&A", "1:1 mentorship"], cta: "Enrol via WhatsApp", to: WA_ENROLL, external: true, highlight: false },
 ];
 
 const faqs = [
@@ -236,7 +236,11 @@ export default function Landing() {
               {p.highlight && <span className="absolute -top-3 left-8 text-[10px] font-bold text-navy bg-emerald px-3 py-1 rounded-full">MOST POPULAR</span>}
               <p className="overline text-emerald mb-2">{p.tag}</p>
               <h3 className="font-heading text-2xl font-extrabold">{p.name}</h3>
-              <p className="font-mono text-3xl font-bold mt-3 mb-6">{p.price}</p>
+              <div className="mt-3 mb-6 flex items-end gap-2 flex-wrap">
+                <span className="font-mono text-3xl font-bold">{p.price}</span>
+                {p.original && <span className="font-mono text-lg text-slate-500 line-through">{p.original}</span>}
+                {p.save && <span className="text-[10px] font-bold text-navy bg-emerald px-2 py-0.5 rounded-full mb-1">{p.save}</span>}
+              </div>
               <ul className="space-y-3 mb-8">
                 {p.features.map((f) => (
                   <li key={f} className="flex items-start gap-2 text-sm text-slate-300"><CheckCircle2 className="w-4 h-4 text-emerald mt-0.5 shrink-0" /> {f}</li>
