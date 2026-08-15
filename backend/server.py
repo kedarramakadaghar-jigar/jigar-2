@@ -232,6 +232,10 @@ async def forgot(body: ForgotIn):
     # Always return success to avoid email enumeration
     return {"ok": True, "message": "If an account exists, password reset instructions have been sent to your email."}
 
+class PasswordChange(BaseModel):
+    current_password: Optional[str] = None
+    new_password: str
+
 @api.put("/auth/profile")
 async def update_profile(body: ProfileUpdate, request: Request):
     u = await current_user(request)
@@ -239,6 +243,25 @@ async def update_profile(body: ProfileUpdate, request: Request):
         await db.users.update_one({"user_id": u["user_id"]}, {"$set": {"name": body.name}})
         u["name"] = body.name
     return public_user(u)
+
+@api.post("/auth/change-password")
+async def change_password(body: PasswordChange, request: Request):
+    u = await current_user(request)
+    if len(body.new_password) < 6:
+        raise HTTPException(400, "New password must be at least 6 characters")
+    has_password = bool(u.get("password_hash"))
+    if has_password:
+        if not body.current_password:
+            raise HTTPException(400, "Current password is required")
+        if not verify_pw(body.current_password, u["password_hash"]):
+            raise HTTPException(400, "Current password is incorrect")
+        if verify_pw(body.new_password, u["password_hash"]):
+            raise HTTPException(400, "New password must be different from the current password")
+    await db.users.update_one(
+        {"user_id": u["user_id"]},
+        {"$set": {"password_hash": hash_pw(body.new_password)}})
+    msg = "Password updated successfully" if has_password else "Password set — you can now log in with your email and password"
+    return {"ok": True, "message": msg}
 
 
 # ----------------- Course content -----------------
