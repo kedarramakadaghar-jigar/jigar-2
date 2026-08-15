@@ -225,8 +225,13 @@ async def course_full(course_id: str):
     if not course:
         raise HTTPException(404, "Course not found")
     modules = await db.modules.find({"course_id": course_id}, {"_id": 0}).sort("order", 1).to_list(200)
+    module_ids = [m["module_id"] for m in modules]
+    all_lessons = await db.lessons.find({"module_id": {"$in": module_ids}}, {"_id": 0}).sort("order", 1).to_list(2000)
+    by_module = {}
+    for l in all_lessons:
+        by_module.setdefault(l["module_id"], []).append(l)
     for m in modules:
-        m["lessons"] = await db.lessons.find({"module_id": m["module_id"]}, {"_id": 0}).sort("order", 1).to_list(200)
+        m["lessons"] = by_module.get(m["module_id"], [])
     course["modules"] = modules
     return course
 
@@ -301,8 +306,10 @@ async def admin_stats(admin: dict = Depends(admin_user)):
 async def admin_users(admin: dict = Depends(admin_user)):
     users = await db.users.find({}, {"_id": 0, "password_hash": 0}).to_list(1000)
     total = await db.lessons.count_documents({})
+    pipeline = [{"$match": {"completed": True}}, {"$group": {"_id": "$user_id", "count": {"$sum": 1}}}]
+    progress_map = {p["_id"]: p["count"] async for p in db.progress.aggregate(pipeline)}
     for u in users:
-        done = await db.progress.count_documents({"user_id": u["user_id"], "completed": True})
+        done = progress_map.get(u["user_id"], 0)
         u["progress"] = {"completed": done, "total": total, "percentage": round(done / total * 100) if total else 0}
     return users
 
