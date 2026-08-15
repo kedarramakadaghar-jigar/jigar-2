@@ -1,0 +1,106 @@
+{
+  "project_type": "hybrid_fullstack",
+  "theme": "dark",
+  "archetype": "ARCHETYPE 5: LUXURY (Premium, Depth, Mystery) and ARCHETYPE 4: SWISS & HIGH-CONTRAST",
+  "typography": {
+    "headings": "Cabinet Grotesk (Premium, authoritative, modern. NEVER use Inter/Roboto for headings)",
+    "body": "IBM Plex Sans (Sterile, clean tech body font perfect for data)",
+    "mono": "JetBrains Mono (For numbers and tickers)",
+    "rules": "Headings MUST use tight letter spacing (tracking-tight). Overlines MUST be uppercase + tiny + wide spacing. Line Height: Tight for headers, Loose for body. H1 ceiling is text-6xl."
+  },
+  "colors": {
+    "primary_background": "#0A0F1C",
+    "secondary_background": "#111827",
+    "text_primary": "#FFFFFF",
+    "text_secondary": "#94A3B8",
+    "accent_primary": "#10B981",
+    "accent_hover": "#059669",
+    "rules": "Never use pure #000000. Tint neutral greys with cool blue. High contrast for readability. Minimum 4.5:1 ratio. No full-screen gradients."
+  },
+  "visual_enhancers": {
+    "textures": "Subtle noise/grain overlay to kill digital flatness.",
+    "surfaces": "Glassmorphism for sticky navs (backdrop-blur-xl bg-slate-900/70 border border-white/10). Flat solid backgrounds with 1px borders for dashboard widgets. Tracing beam for high-conversion pricing cards."
+  },
+  "components": {
+    "buttons": "Pill-shaped or sharp minimal buttons. Never use generic styles. Hover explicitly defines text color.",
+    "cards": "Cardless or sharp rectangular styles for Dashboard. Shadcn UI.",
+    "forms": "Shadcn Input, Select, Form. Never native.",
+    "toasts": "Sonner from Shadcn.",
+    "charts": "Shadcn chart components (Recharts) with accessible palettes.",
+    "icons": "lucide-react or @phosphor-icons/react for duotone."
+  },
+  "grids": {
+    "marketing": "The 'Tetris' Bento Grid (grid-cols-1 md:grid-cols-8 lg:grid-cols-12, wide gaps).",
+    "dashboard": "High Density Grid (grid-cols-1 md:grid-cols-3 lg:grid-cols-4, tight gaps)."
+  },
+  "layouts": {
+    "spacing": "Generous Spacing Philosophy: Use p-12 to p-24 for marketing sections. Containers with borders must have internal padding.",
+    "alignment": "Mobile-First. Left-align dense content. Optical alignment over mathematical alignment.",
+    "dashboard": "Left-sidebar navigation, top-left focus for core progress metrics."
+  },
+  "motion": {
+    "rules": "Micro-interactions for all hover states. Entrance stagger animations for lists. Use specific properties for transitions (NOT transition: all). Respect prefers-reduced-motion."
+  },
+  "accessibility": {
+    "contrast": "APCA contrast calculator preferred. Focus states must have HIGHER contrast.",
+    "testing": "All interactive and key informational elements MUST include a 'data-testid' attribute (kebab-case, role-based).",
+    "aria": "Add aria-hidden='true' to purely decorative animations."
+  },
+  "media": {
+    "rules": "Images must not exceed 80vh on mobile. Max hero overlay opacity bg-black/50."
+  },
+  "3d_libraries": {
+    "recommendation": "React Spring Parallax for '2.5D' storytelling on the marketing landing page (layering charts behind text). TS Particles for subtle floating network dots in the hero background.",
+    "decision": "Not strictly necessary for the core product, but good for marketing hero impact. Avoid Drei/R3F to keep the platform fast."
+  },
+  "image_urls": [
+    {
+      "url": "https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1Nzd8MHwxfHNlYXJjaHwxfHx0cmFkaW5nJTIwZGFzaGJvYXJkJTIwc2NyZWVufGVufDB8fHx8MTc4NjUwMTY1OXww&ixlib=rb-4.1.0&q=85",
+      "category": "hero_background",
+      "description": "Dark candlestick chart for the hero section."
+    },
+    {
+      "url": "https://images.unsplash.com/photo-1602016736566-7ed6a58894bd?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NTYxODF8MHwxfHNlYXJjaHwzfHxwcm9mZXNzaW9uYWwlMjBzdHVkeWluZyUyMGxhcHRvcHxlbnwwfHx8fDE3ODY1MDE2NTl8MA&ixlib=rb-4.1.0&q=85",
+      "category": "about_user",
+      "description": "Professional user studying stock market on a laptop."
+    },
+    {
+      "url": "https://images.unsplash.com/photo-1651341050677-24dba59ce0fd?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1Nzd8MHwxfHNlYXJjaHw0fHx0cmFkaW5nJTIwZGFzaGJvYXJkJTIwc2NyZWVufGVufDB8fHx8MTc4NjUwMTY1OXww&ixlib=rb-4.1.0&q=85",
+      "category": "dashboard_preview",
+      "description": "Dashboard interface mockup."
+    }
+  ],
+  "instructions_to_main_agent": [
+    "DO NOT use generic centered layouts or simplistic gradients.",
+    "Apply 'Cabinet Grotesk' font to headings. Do NOT use Inter for headings.",
+    "Implement Shadcn components heavily but strip the Vercel look.",
+    "Add layered design elements with z-index hierarchy and generous spacing (p-8 to p-12).",
+    "Ensure all interactive elements have data-testid attributes.",
+    "Do NOT apply universal transition (`transition: all`).",
+    "Create a dark mode platform matching the Premium Finance vibe, with Slate/Navy bases and Emerald accents.",
+    "Implement Sonner for toast notifications.",
+    "Use Phosphor icons or Lucide React for crisp, professional iconography.",
+    "For the dashboard, use cardless or flat rectangular styles, no glassmorphism.",
+    "Include Free, Full Course, and Premium pricing tiers natively integrated with the design.",
+    "Integrate Live Classes sessions UI."
+  ],
+  "UNIVERSAL GUIDELINES FOR MAIN AGENT": [
+    "You tend to converge toward generic, 'on distribution' outputs. In frontend design, this creates what users call the 'AI slop' aesthetic. Avoid this: make creative, distinctive frontends that surprise and delight.",
+    "Dark colors look good when used independently without gradients. DO NOT use dark colors as gradients.",
+    "Don't make generic centered layouts, simplistic gradients, and uniform styling.",
+    "Create depth through layered design elements with z-index hierarchy.",
+    "Use glass-morphism effects with backdrop filter (12-24px blur).",
+    "You MUST NOT apply universal transition. Eg: transition: all. This results in breaking transforms. Always add transitions for specific interactive elements like button, input excluding transforms.",
+    "You MUST NOT center align the app container, ie do not add .App { text-align: center; } in the css file. This disrupts the human natural reading flow of text.",
+    "Always use modern button styles like pill-shaped, or sharp button with interaction animations & color relevant to the app style.",
+    "NEVER: use AI assistant Emoji characters like 🤖🧠💭💡🔮🎯 etc for icons.",
+    "Every interaction needs micro-animations - hover states, transitions, parallax effects, and entrance animations. Static = dead.",
+    "Use 2-3x more spacing than feels comfortable. Cramped designs look cheap.",
+    "Subtle grain textures, noise overlays, custom cursors, selection states, and loading animations: separates good from extraordinary.",
+    "Main agent relies on these image URLs. Missing categories (especially sponsor logos) = main agent will use placeholder text which is FORBIDDEN.",
+    "Prioritize using pre-existing components from src/components/ui when applicable.",
+    "Create new components that match the style and conventions of existing components when needed.",
+    "Examine existing components to understand the project's component patterns before creating new ones.",
+    "Use sonner for toasts. Sonner component are located in /app/src/components/ui/sonner.js or equivalent js format"
+  ]
+}
