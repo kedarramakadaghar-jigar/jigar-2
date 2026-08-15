@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { toast } from "sonner";
 import {
-  Users, BookOpen, Layers, PlayCircle, Radio, MessageSquare, Plus, Trash2, Pencil, Shield, Mail, ShieldCheck, ShieldOff,
+  Users, BookOpen, Layers, PlayCircle, Radio, MessageSquare, Plus, Trash2, Pencil, Shield, Mail, ShieldCheck, ShieldOff, UserPlus, KeyRound,
 } from "lucide-react";
 import api from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
@@ -34,6 +34,11 @@ export default function Admin() {
   const [contacts, setContacts] = useState([]);
   const [userQuery, setUserQuery] = useState("");
   const [pendingRole, setPendingRole] = useState(null); // { user, role }
+  const [newUserOpen, setNewUserOpen] = useState(false);
+  const [newUser, setNewUser] = useState({ name: "", email: "", password: "", role: "student" });
+  const [resetTarget, setResetTarget] = useState(null); // user
+  const [resetPw, setResetPw] = useState("");
+  const [pendingDelete, setPendingDelete] = useState(null); // user
 
   const loadAll = useCallback(async () => {
     try {
@@ -64,6 +69,46 @@ export default function Admin() {
     if (!q) return true;
     return u.name?.toLowerCase().includes(q) || u.email?.toLowerCase().includes(q) || u.role?.toLowerCase().includes(q);
   });
+
+  const createUser = async () => {
+    if (!newUser.name || !newUser.email || newUser.password.length < 6) {
+      return toast.error("Enter name, email and a password of at least 6 characters");
+    }
+    try {
+      await api.post("/admin/users", newUser);
+      toast.success(`Account created for ${newUser.name}`);
+      setNewUserOpen(false);
+      setNewUser({ name: "", email: "", password: "", role: "student" });
+      loadAll();
+    } catch (err) {
+      toast.error(err.response?.data?.detail || "Could not create account");
+    }
+  };
+
+  const resetPassword = async () => {
+    if (resetPw.length < 6) return toast.error("Password must be at least 6 characters");
+    try {
+      await api.post(`/admin/users/${resetTarget.user_id}/reset-password`, { new_password: resetPw });
+      toast.success(`Password reset for ${resetTarget.name}`);
+      setResetTarget(null);
+      setResetPw("");
+    } catch (err) {
+      toast.error(err.response?.data?.detail || "Could not reset password");
+    }
+  };
+
+  const deleteUser = async () => {
+    try {
+      await api.delete(`/admin/users/${pendingDelete.user_id}`);
+      toast.success("Account deleted");
+      setPendingDelete(null);
+      loadAll();
+    } catch (err) {
+      toast.error(err.response?.data?.detail || "Could not delete account");
+    }
+  };
+
+  const genPassword = () => Math.random().toString(36).slice(-4) + Math.random().toString(36).toUpperCase().slice(-4) + "!" + Math.floor(Math.random() * 90 + 10);
 
   const statCards = [
     { icon: Users, label: "Users", value: stats.users }, { icon: BookOpen, label: "Courses", value: stats.courses },
@@ -103,10 +148,37 @@ export default function Admin() {
 
           {/* USERS */}
           <TabsContent value="users" className="mt-6">
-            <div className="relative mb-4 max-w-sm">
-              <Search className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
-              <Input value={userQuery} onChange={(e) => setUserQuery(e.target.value)} data-testid="user-search"
-                placeholder="Search by name, email or role…" className="pl-9 bg-navy-2 border-white/10" />
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+              <div className="relative max-w-sm w-full">
+                <Search className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                <Input value={userQuery} onChange={(e) => setUserQuery(e.target.value)} data-testid="user-search"
+                  placeholder="Search by name, email or role…" className="pl-9 bg-navy-2 border-white/10" />
+              </div>
+              <Dialog open={newUserOpen} onOpenChange={setNewUserOpen}>
+                <DialogTrigger asChild>
+                  <button data-testid="create-user-btn" className="btn-emerald text-sm font-semibold px-4 py-2 rounded-full inline-flex items-center gap-1 shrink-0"><UserPlus className="w-4 h-4" /> Create Student</button>
+                </DialogTrigger>
+                <DialogContent className="bg-navy-2 border-white/10 text-white">
+                  <DialogHeader><DialogTitle>Create Student Account</DialogTitle></DialogHeader>
+                  <div className="space-y-3">
+                    <div><Label className="text-slate-300">Full Name</Label><Input value={newUser.name} onChange={(e) => setNewUser({ ...newUser, name: e.target.value })} data-testid="new-user-name" className="mt-1.5 bg-navy border-white/10" /></div>
+                    <div><Label className="text-slate-300">Email (username)</Label><Input type="email" value={newUser.email} onChange={(e) => setNewUser({ ...newUser, email: e.target.value })} data-testid="new-user-email" className="mt-1.5 bg-navy border-white/10" /></div>
+                    <div>
+                      <Label className="text-slate-300">Password</Label>
+                      <div className="flex gap-2 mt-1.5">
+                        <Input value={newUser.password} onChange={(e) => setNewUser({ ...newUser, password: e.target.value })} data-testid="new-user-password" className="bg-navy border-white/10" placeholder="At least 6 characters" />
+                        <button type="button" onClick={() => setNewUser({ ...newUser, password: genPassword() })} className="text-xs px-3 rounded-lg border border-white/15 text-slate-300 hover:border-emerald/50 whitespace-nowrap">Generate</button>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm">
+                      <Switch checked={newUser.role === "admin"} onCheckedChange={(v) => setNewUser({ ...newUser, role: v ? "admin" : "student" })} />
+                      <Label className="text-slate-300">Make this an admin account</Label>
+                    </div>
+                    <p className="text-xs text-slate-500">Share these credentials with the student. They can change their password after logging in.</p>
+                  </div>
+                  <DialogFooter><button onClick={createUser} data-testid="new-user-save" className="btn-emerald font-semibold px-5 py-2 rounded-full">Create Account</button></DialogFooter>
+                </DialogContent>
+              </Dialog>
             </div>
             <div className="rounded-xl border border-white/10 bg-navy-2 overflow-x-auto">
               <table className="w-full text-sm">
@@ -120,20 +192,32 @@ export default function Admin() {
                       <td className="p-4 text-slate-400">{u.email}</td>
                       <td className="p-4"><span className={`text-xs px-2 py-1 rounded-full ${u.role === "admin" ? "bg-emerald/20 text-emerald" : "bg-white/5 text-slate-300"}`}>{u.role}</span></td>
                       <td className="p-4 font-mono text-slate-300">{u.progress.completed}/{u.progress.total} ({u.progress.percentage}%)</td>
-                      <td className="p-4 text-right">
-                        {u.user_id === me?.user_id ? (
-                          <span className="text-xs text-slate-600">You</span>
-                        ) : u.role === "admin" ? (
-                          <button onClick={() => setPendingRole({ user: u, role: "student" })} data-testid={`demote-${u.user_id}`}
-                            className="text-xs inline-flex items-center gap-1 px-3 py-1.5 rounded-full border border-white/15 text-slate-300 hover:border-red-400/50 hover:text-red-400 transition-colors">
-                            <ShieldOff className="w-3.5 h-3.5" /> Revoke Admin
+                      <td className="p-4">
+                        <div className="flex items-center justify-end gap-2">
+                          <button onClick={() => { setResetTarget(u); setResetPw(""); }} data-testid={`reset-pw-${u.user_id}`}
+                            className="text-xs inline-flex items-center gap-1 px-3 py-1.5 rounded-full border border-white/15 text-slate-300 hover:border-emerald/50 hover:text-emerald transition-colors">
+                            <KeyRound className="w-3.5 h-3.5" /> Reset PW
                           </button>
-                        ) : (
-                          <button onClick={() => setPendingRole({ user: u, role: "admin" })} data-testid={`promote-${u.user_id}`}
-                            className="text-xs inline-flex items-center gap-1 px-3 py-1.5 rounded-full border border-emerald/40 text-emerald hover:bg-emerald/10 transition-colors">
-                            <ShieldCheck className="w-3.5 h-3.5" /> Promote to Admin
-                          </button>
-                        )}
+                          {u.user_id === me?.user_id ? (
+                            <span className="text-xs text-slate-600">You</span>
+                          ) : (
+                            <>
+                              {u.role === "admin" ? (
+                                <button onClick={() => setPendingRole({ user: u, role: "student" })} data-testid={`demote-${u.user_id}`}
+                                  className="text-xs inline-flex items-center gap-1 px-3 py-1.5 rounded-full border border-white/15 text-slate-300 hover:border-red-400/50 hover:text-red-400 transition-colors">
+                                  <ShieldOff className="w-3.5 h-3.5" /> Revoke
+                                </button>
+                              ) : (
+                                <button onClick={() => setPendingRole({ user: u, role: "admin" })} data-testid={`promote-${u.user_id}`}
+                                  className="text-xs inline-flex items-center gap-1 px-3 py-1.5 rounded-full border border-emerald/40 text-emerald hover:bg-emerald/10 transition-colors">
+                                  <ShieldCheck className="w-3.5 h-3.5" /> Admin
+                                </button>
+                              )}
+                              <button onClick={() => setPendingDelete(u)} data-testid={`delete-user-${u.user_id}`}
+                                className="text-slate-400 hover:text-red-400 p-1.5"><Trash2 className="w-4 h-4" /></button>
+                            </>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -143,6 +227,35 @@ export default function Admin() {
                 </tbody>
               </table>
             </div>
+
+            {/* Reset password dialog */}
+            <Dialog open={!!resetTarget} onOpenChange={(o) => !o && setResetTarget(null)}>
+              <DialogContent className="bg-navy-2 border-white/10 text-white">
+                <DialogHeader><DialogTitle>Reset Password</DialogTitle></DialogHeader>
+                <p className="text-sm text-slate-400">Set a new password for <span className="text-slate-200 font-semibold">{resetTarget?.name}</span> ({resetTarget?.email}).</p>
+                <div className="flex gap-2 mt-2">
+                  <Input value={resetPw} onChange={(e) => setResetPw(e.target.value)} data-testid="reset-pw-input" className="bg-navy border-white/10" placeholder="New password (min 6 chars)" />
+                  <button type="button" onClick={() => setResetPw(genPassword())} className="text-xs px-3 rounded-lg border border-white/15 text-slate-300 hover:border-emerald/50 whitespace-nowrap">Generate</button>
+                </div>
+                <DialogFooter><button onClick={resetPassword} data-testid="reset-pw-save" className="btn-emerald font-semibold px-5 py-2 rounded-full">Reset Password</button></DialogFooter>
+              </DialogContent>
+            </Dialog>
+
+            {/* Delete confirmation */}
+            <AlertDialog open={!!pendingDelete} onOpenChange={(o) => !o && setPendingDelete(null)}>
+              <AlertDialogContent className="bg-navy-2 border-white/10 text-white">
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete account?</AlertDialogTitle>
+                  <AlertDialogDescription className="text-slate-400">
+                    This permanently deletes <span className="text-slate-200 font-semibold">{pendingDelete?.name}</span> ({pendingDelete?.email}) and their progress. This cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel className="bg-transparent border-white/15 text-slate-200 hover:bg-white/5 hover:text-white">Cancel</AlertDialogCancel>
+                  <AlertDialogAction data-testid="delete-user-confirm" onClick={deleteUser} className="bg-red-500 text-white hover:bg-red-600">Delete</AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
 
             <AlertDialog open={!!pendingRole} onOpenChange={(o) => !o && setPendingRole(null)}>
               <AlertDialogContent className="bg-navy-2 border-white/10 text-white">

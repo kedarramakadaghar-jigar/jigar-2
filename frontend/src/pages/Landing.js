@@ -34,7 +34,7 @@ const howSteps = [
 ];
 
 const pricing = [
-  { name: "Free", price: "₹0", tag: "Start today", features: ["Access to intro modules", "Personal dashboard", "Progress tracking", "Community updates"], cta: "Create Free Account", to: "/register", highlight: false },
+  { name: "Free", price: "₹0", tag: "Included", features: ["Access to intro modules", "Personal dashboard", "Progress tracking", "Community updates"], cta: "Login", to: "/login", highlight: false },
   { name: "Full Course", price: "Coming Soon", tag: "Most popular", features: ["All 18 modules", "Every lesson & objective", "Downloadable resources", "Live session access"], cta: "Notify Me", to: "/contact", highlight: true },
   { name: "Premium / Advanced", price: "Coming Soon", tag: "For serious learners", features: ["Everything in Full Course", "Advanced strategy modules", "Priority live Q&A", "1:1 mentorship (planned)"], cta: "Notify Me", to: "/contact", highlight: false },
 ];
@@ -79,7 +79,7 @@ export default function Landing() {
           <div className="lg:col-span-7">
             <motion.div initial="hidden" animate="show" variants={fadeUp} className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-emerald/30 bg-emerald/10 mb-6">
               <span className="w-2 h-2 rounded-full bg-emerald animate-pulse" />
-              <span className="overline text-emerald">Free to start · 18 structured modules</span>
+              <span className="overline text-emerald">Members-only · 18 structured modules</span>
             </motion.div>
             <motion.h1 initial="hidden" animate="show" custom={1} variants={fadeUp} className="font-heading text-4xl sm:text-5xl lg:text-6xl font-extrabold leading-[1.05]">
               Learn the Stock Market.<br /><span className="text-emerald">Build Real Trading Skills.</span>
@@ -88,8 +88,8 @@ export default function Landing() {
               A structured stock market learning course designed to take you from the basics to advanced trading concepts — step by step.
             </motion.p>
             <motion.div initial="hidden" animate="show" custom={3} variants={fadeUp} className="mt-8 flex flex-wrap gap-4">
-              <Link to="/register" data-testid="hero-start-learning" className="btn-emerald font-semibold px-6 py-3 rounded-full inline-flex items-center gap-2">
-                Start Learning Free <ArrowRight className="w-4 h-4" />
+              <Link to="/login" data-testid="hero-start-learning" className="btn-emerald font-semibold px-6 py-3 rounded-full inline-flex items-center gap-2">
+                Student Login <ArrowRight className="w-4 h-4" />
               </Link>
               <Link to="/courses" data-testid="hero-explore-course" className="px-6 py-3 rounded-full border border-white/15 text-slate-100 font-semibold hover:border-emerald/50 transition-colors">
                 Explore Course
@@ -271,9 +271,9 @@ export default function Landing() {
       <section className="relative z-10 py-24 border-t border-white/10">
         <div className="max-w-4xl mx-auto px-5 sm:px-8 text-center">
           <h2 className="font-heading text-3xl sm:text-4xl font-extrabold mb-4">Ready to start learning?</h2>
-          <p className="text-slate-300 mb-8">Create your free account and begin your journey from beginner to advanced trader.</p>
-          <Link to="/register" className="btn-emerald font-semibold px-8 py-4 rounded-full inline-flex items-center gap-2 text-lg">
-            Join Free <ArrowRight className="w-5 h-5" />
+          <p className="text-slate-300 mb-8">Log in with the account your administrator created for you and continue your journey from beginner to advanced trader.</p>
+          <Link to="/login" className="btn-emerald font-semibold px-8 py-4 rounded-full inline-flex items-center gap-2 text-lg">
+            Student Login <ArrowRight className="w-5 h-5" />
           </Link>
         </div>
       </section>

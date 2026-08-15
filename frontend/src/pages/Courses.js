@@ -21,7 +21,7 @@ export default function Courses() {
 
   const openLesson = (lesson) => {
     const locked = !lesson.is_free && !user;
-    if (locked) { navigate("/register"); return; }
+    if (locked) { navigate("/login"); return; }
     navigate(`/learn/${lesson.lesson_id}`);
   };
 
@@ -40,8 +40,8 @@ export default function Courses() {
             <span className="flex items-center gap-2 font-mono">{course?.level}</span>
           </div>
           {!user && (
-            <Link to="/register" className="btn-emerald inline-flex mt-8 font-semibold px-6 py-3 rounded-full" data-testid="courses-signup-cta">
-              Create Free Account to Start
+            <Link to="/login" className="btn-emerald inline-flex mt-8 font-semibold px-6 py-3 rounded-full" data-testid="courses-signup-cta">
+              Log In to Start Learning
             </Link>
           )}
         </div>

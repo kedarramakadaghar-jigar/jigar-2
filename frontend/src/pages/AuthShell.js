@@ -21,7 +21,7 @@ export default function AuthShell({ title, subtitle, children, footer }) {
           </Link>
           <div>
             <h2 className="font-heading text-4xl font-extrabold leading-tight mb-4">Learn the market.<br /><span className="text-emerald">Build real skills.</span></h2>
-            <p className="text-slate-400 max-w-sm">Structured, practical stock market education — free to start, learn at your own pace.</p>
+            <p className="text-slate-400 max-w-sm">Structured, practical stock market education — learn at your own pace with your member account.</p>
             <p className="text-xs text-slate-600 mt-8">Educational content only. Trading involves risk. No returns are guaranteed.</p>
           </div>
         </div>

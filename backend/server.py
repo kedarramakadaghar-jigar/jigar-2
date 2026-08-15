@@ -161,23 +161,8 @@ async def admin_user(request: Request) -> dict:
 
 
 # ----------------- Auth routes -----------------
-@api.post("/auth/register")
-async def register(body: RegisterIn):
-    if body.password != body.confirm_password:
-        raise HTTPException(400, "Passwords do not match")
-    if len(body.password) < 6:
-        raise HTTPException(400, "Password must be at least 6 characters")
-    existing = await db.users.find_one({"email": body.email.lower()})
-    if existing:
-        raise HTTPException(400, "An account with this email already exists")
-    uid = f"user_{uuid.uuid4().hex[:12]}"
-    doc = {
-        "user_id": uid, "name": body.name, "email": body.email.lower(),
-        "password_hash": hash_pw(body.password), "role": "student",
-        "picture": "", "auth_provider": "password", "created_at": now_utc().isoformat(),
-    }
-    await db.users.insert_one(doc)
-    return {"token": make_jwt(uid), "user": public_user(doc)}
+# NOTE: Public self-registration is disabled. Accounts are created by admins only
+# (see POST /api/admin/users). Students log in with credentials issued by an admin.
 
 @api.post("/auth/login")
 async def login(body: LoginIn):
@@ -185,35 +170,6 @@ async def login(body: LoginIn):
     if not u or not u.get("password_hash") or not verify_pw(body.password, u["password_hash"]):
         raise HTTPException(401, "Invalid email or password")
     return {"token": make_jwt(u["user_id"]), "user": public_user(u)}
-
-@api.post("/auth/google/session")
-async def google_session(body: GoogleSessionIn, response: Response):
-    r = requests.get(
-        "https://demobackend.emergentagent.com/auth/v1/env/oauth/session-data",
-        headers={"X-Session-ID": body.session_id}, timeout=15)
-    if r.status_code != 200:
-        raise HTTPException(401, "Invalid session")
-    data = r.json()
-    email = data["email"].lower()
-    u = await db.users.find_one({"email": email}, {"_id": 0})
-    if not u:
-        uid = f"user_{uuid.uuid4().hex[:12]}"
-        u = {"user_id": uid, "name": data.get("name", email), "email": email,
-             "password_hash": "", "role": "student", "picture": data.get("picture", ""),
-             "auth_provider": "google", "created_at": now_utc().isoformat()}
-        await db.users.insert_one(u)
-    else:
-        await db.users.update_one({"user_id": u["user_id"]},
-                                  {"$set": {"picture": data.get("picture", u.get("picture", ""))}})
-    stoken = data["session_token"]
-    await db.user_sessions.insert_one({
-        "user_id": u["user_id"], "session_token": stoken,
-        "expires_at": (now_utc() + timedelta(days=7)).isoformat(), "created_at": now_utc().isoformat()})
-    response.set_cookie("session_token", stoken, httponly=True, secure=True,
-                        samesite="none", path="/", max_age=7 * 24 * 3600)
-    return {"user": public_user(u)}
-
-@api.get("/auth/me")
 async def me(request: Request):
     u = await current_user(request)
     return public_user(u)
@@ -225,12 +181,6 @@ async def logout(request: Request, response: Response):
         await db.user_sessions.delete_one({"session_token": tok})
     response.delete_cookie("session_token", path="/")
     return {"ok": True}
-
-@api.post("/auth/forgot-password")
-async def forgot(body: ForgotIn):
-    u = await db.users.find_one({"email": body.email.lower()})
-    # Always return success to avoid email enumeration
-    return {"ok": True, "message": "If an account exists, password reset instructions have been sent to your email."}
 
 class PasswordChange(BaseModel):
     current_password: Optional[str] = None
@@ -358,6 +308,55 @@ async def admin_users(admin: dict = Depends(admin_user)):
 
 class RoleIn(BaseModel):
     role: str
+
+class AdminCreateUser(BaseModel):
+    name: str
+    email: EmailStr
+    password: str
+    role: str = "student"
+
+class AdminResetPassword(BaseModel):
+    new_password: str
+
+@api.post("/admin/users")
+async def admin_create_user(body: AdminCreateUser, admin: dict = Depends(admin_user)):
+    if body.role not in ("admin", "student"):
+        raise HTTPException(400, "Invalid role")
+    if len(body.password) < 6:
+        raise HTTPException(400, "Password must be at least 6 characters")
+    if await db.users.find_one({"email": body.email.lower()}):
+        raise HTTPException(400, "An account with this email already exists")
+    uid = f"user_{uuid.uuid4().hex[:12]}"
+    doc = {
+        "user_id": uid, "name": body.name, "email": body.email.lower(),
+        "password_hash": hash_pw(body.password), "role": body.role,
+        "picture": "", "auth_provider": "password", "created_at": now_utc().isoformat(),
+    }
+    await db.users.insert_one(doc)
+    return public_user(doc)
+
+@api.post("/admin/users/{user_id}/reset-password")
+async def admin_reset_password(user_id: str, body: AdminResetPassword, admin: dict = Depends(admin_user)):
+    if len(body.new_password) < 6:
+        raise HTTPException(400, "Password must be at least 6 characters")
+    target = await db.users.find_one({"user_id": user_id}, {"_id": 0})
+    if not target:
+        raise HTTPException(404, "User not found")
+    await db.users.update_one({"user_id": user_id},
+                              {"$set": {"password_hash": hash_pw(body.new_password), "auth_provider": "password"}})
+    return {"ok": True, "message": "Password reset successfully"}
+
+@api.delete("/admin/users/{user_id}")
+async def admin_delete_user(user_id: str, admin: dict = Depends(admin_user)):
+    if user_id == admin["user_id"]:
+        raise HTTPException(400, "You cannot delete your own account")
+    target = await db.users.find_one({"user_id": user_id})
+    if not target:
+        raise HTTPException(404, "User not found")
+    await db.users.delete_one({"user_id": user_id})
+    await db.progress.delete_many({"user_id": user_id})
+    await db.user_sessions.delete_many({"user_id": user_id})
+    return {"ok": True}
 
 @api.put("/admin/users/{user_id}/role")
 async def set_user_role(user_id: str, body: RoleIn, admin: dict = Depends(admin_user)):

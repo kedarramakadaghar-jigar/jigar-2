@@ -1,11 +1,10 @@
 import { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/context/AuthContext";
-import AuthShell, { googleLogin } from "@/pages/AuthShell";
-import { GoogleBtn } from "@/pages/GoogleBtn";
+import AuthShell from "@/pages/AuthShell";
 
 export default function Login() {
   const [form, setForm] = useState({ email: "", password: "" });
@@ -28,8 +27,8 @@ export default function Login() {
   };
 
   return (
-    <AuthShell title="Welcome back" subtitle="Log in to continue learning."
-      footer={<>Don't have an account? <Link to="/register" className="text-emerald hover:underline">Create Free Account</Link></>}>
+    <AuthShell title="Student Login" subtitle="Log in with the credentials issued by your administrator."
+      footer={<>Don't have an account? <span className="text-slate-300">Contact your administrator to get access.</span></>}>
       <form onSubmit={submit} className="space-y-4" data-testid="login-form">
         <div>
           <Label className="text-slate-300">Email Address</Label>
@@ -41,26 +40,14 @@ export default function Login() {
           <Input type="password" required value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })}
             data-testid="login-password" className="mt-1.5 bg-navy-2 border-white/10" placeholder="••••••••" />
         </div>
-        <div className="text-right">
-          <Link to="/forgot-password" className="text-xs text-slate-400 hover:text-emerald">Forgot password?</Link>
-        </div>
         <button type="submit" disabled={loading} data-testid="login-submit"
           className="btn-emerald w-full font-semibold py-3 rounded-full disabled:opacity-60">
           {loading ? "Logging in…" : "Login"}
         </button>
       </form>
-      <Divider />
-      <GoogleBtn onClick={googleLogin} label="Continue with Google" />
+      <p className="mt-5 text-xs text-slate-500 text-center">
+        Accounts are created by an administrator. Once you log in, you can change your password from your profile.
+      </p>
     </AuthShell>
-  );
-}
-
-function Divider() {
-  return (
-    <div className="flex items-center gap-3 my-5">
-      <div className="flex-1 h-px bg-white/10" />
-      <span className="text-xs text-slate-500">or</span>
-      <div className="flex-1 h-px bg-white/10" />
-    </div>
   );
 }

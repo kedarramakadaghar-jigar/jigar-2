@@ -64,10 +64,7 @@ export default function Navbar() {
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
-            <>
-              <Link to="/login" data-testid="nav-login" className="text-sm text-slate-200 hover:text-emerald transition-colors px-3 py-2">Login</Link>
-              <Link to="/register" data-testid="nav-register" className="btn-emerald text-sm font-semibold px-4 py-2 rounded-full">Create Free Account</Link>
-            </>
+            <Link to="/login" data-testid="nav-login" className="btn-emerald text-sm font-semibold px-5 py-2 rounded-full">Login</Link>
           )}
         </div>
 
@@ -90,10 +87,7 @@ export default function Navbar() {
                 <button onClick={() => { setOpen(false); handleLogout(); }} className="text-left py-2 text-slate-200">Logout</button>
               </>
             ) : (
-              <>
-                <Link to="/login" onClick={() => setOpen(false)} className="py-2 text-slate-200">Login</Link>
-                <Link to="/register" onClick={() => setOpen(false)} className="btn-emerald text-center font-semibold px-4 py-2 rounded-full">Create Free Account</Link>
-              </>
+              <Link to="/login" onClick={() => setOpen(false)} className="btn-emerald text-center font-semibold px-4 py-2 rounded-full">Login</Link>
             )}
           </div>
         </div>
