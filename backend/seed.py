@@ -36,6 +36,29 @@ OBJECTIVES = [
     ["Apply the concept on a live chart", "Recognise common mistakes to avoid", "Practice with a worked example"],
 ]
 
+TESTIMONIALS = [
+    ("Aditya Kumar", "Software Engineer, Bengaluru", "The step-by-step structure finally made technical analysis click for me. I read charts now instead of guessing.", 5),
+    ("Meera Iyer", "College Student, Chennai", "As a complete beginner I loved how the fundamentals were explained. The risk management module changed how I think about the market.", 5),
+    ("Sanjay Patel", "Small Business Owner, Surat", "Clear, honest and practical. No hype about profits — just solid education I can learn at my own pace.", 5),
+    ("Nisha Reddy", "Marketing Manager, Hyderabad", "The live sessions are fantastic for asking questions. The dashboard keeps me motivated to finish every lesson.", 5),
+    ("Rahul Verma", "Bank Employee, Delhi", "I always found candlesticks confusing. After the candlestick and support-resistance modules, charts finally make sense.", 5),
+    ("Priya Sharma", "Homemaker, Pune", "I started with zero knowledge. The beginner-friendly pace and simple language made it easy to keep going.", 5),
+    ("Karthik Nair", "Mechanical Engineer, Kochi", "The trading psychology module was an eye-opener. It taught me discipline more than any indicator ever could.", 5),
+    ("Ananya Ghosh", "Graphic Designer, Kolkata", "Being able to learn after work and track my progress lesson by lesson kept me consistent for weeks.", 5),
+    ("Vikram Singh", "Army Veteran, Jaipur", "Structured, respectful of my time, and completely practical. The chart analysis examples are gold.", 5),
+    ("Deepa Menon", "School Teacher, Trivandrum", "Everything is explained like a proper course, not random tips. I finally understand indicators like RSI and MACD.", 5),
+    ("Arjun Desai", "CA Student, Ahmedabad", "Loved how risk management and position sizing were emphasised. It's education, not false promises.", 5),
+    ("Sneha Joshi", "HR Executive, Nagpur", "The moving averages and trendline lessons were so clear. I recommend this to every beginner friend of mine.", 4),
+    ("Mohammed Farhan", "Freelancer, Bengaluru", "The pace is perfect — you can go slow and rewatch anything. Support and resistance finally makes sense to me.", 5),
+    ("Ritu Agarwal", "Entrepreneur, Indore", "Well organised modules and honest teaching. I appreciate that they never guarantee profits, just knowledge.", 5),
+    ("Suresh Rao", "Retired Professor, Mysore", "At 61 I thought this would be hard. The beginner-friendly approach proved me wrong. Excellent structure.", 5),
+    ("Pooja Malhotra", "Content Writer, Chandigarh", "The chart pattern module with real examples helped me connect theory to actual markets. Very practical.", 5),
+    ("Ganesh Iyer", "IT Consultant, Mumbai", "Clean platform, clear lessons and useful live sessions. Learning at my own pace made all the difference.", 5),
+    ("Tara Krishnan", "Medical Student, Vellore", "Simple explanations for complex topics. The fundamentals and options basics modules were especially helpful.", 5),
+]
+
+
+
 
 async def seed_all(db, hash_pw):
     # Course
@@ -88,16 +111,10 @@ async def seed_all(db, hash_pw):
 
     # Testimonials
     if await db.testimonials.count_documents({}) == 0:
-        data = [
-            ("Aditya Kumar", "Software Engineer", "The step-by-step structure finally made technical analysis click for me. I understand charts instead of guessing.", 5),
-            ("Meera Iyer", "Student", "As a complete beginner I loved how the fundamentals were explained. The risk management module changed how I think about trading.", 5),
-            ("Sanjay Patel", "Small Business Owner", "Clear, honest and practical. No hype about profits — just solid education I can learn at my own pace.", 5),
-            ("Nisha Reddy", "Marketing Manager", "The live sessions are fantastic for asking questions. The dashboard keeps me motivated to finish lessons.", 4),
-        ]
-        for name, role, content, rating in data:
+        for t in TESTIMONIALS:
             await db.testimonials.insert_one({
-                "id": str(uuid.uuid4()), "name": name, "role": role,
-                "content": content, "rating": rating, "avatar": "",
+                "id": str(uuid.uuid4()), "name": t[0], "role": t[1],
+                "content": t[2], "rating": t[3], "avatar": "",
             })
 
     # Demo accounts

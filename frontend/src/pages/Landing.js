@@ -112,7 +112,7 @@ export default function Landing() {
                 ))}
               </div>
               <div className="grid grid-cols-3 gap-3 mt-5">
-                {[["Modules", "18"], ["Lessons", "36"], ["Level", "All"]].map(([k, v]) => (
+                {[["Modules", "18"], ["Lessons", "36"], ["Learners", "400+"]].map(([k, v]) => (
                   <div key={k} className="rounded-lg border border-white/10 p-3">
                     <p className="font-mono text-xl font-bold text-white">{v}</p>
                     <p className="text-[11px] text-slate-400 mt-0.5">{k}</p>
@@ -121,6 +121,24 @@ export default function Landing() {
               </div>
             </div>
           </motion.div>
+        </div>
+      </section>
+
+      {/* SOCIAL PROOF STATS */}
+      <section className="relative z-10 border-b border-white/10 bg-navy-2/40">
+        <div className="max-w-7xl mx-auto px-5 sm:px-8 py-10 grid grid-cols-2 md:grid-cols-4 gap-6">
+          {[
+            ["400+", "Learners enrolled"],
+            ["18", "Structured modules"],
+            ["36", "Video lessons"],
+            ["4.9★", "Average rating"],
+          ].map(([value, label], i) => (
+            <motion.div key={label} initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
+              transition={{ duration: 0.4, delay: i * 0.08 }} className="text-center" data-testid={`stat-strip-${i}`}>
+              <p className="font-heading text-3xl sm:text-4xl font-extrabold text-emerald">{value}</p>
+              <p className="text-xs sm:text-sm text-slate-400 mt-1">{label}</p>
+            </motion.div>
+          ))}
         </div>
       </section>
 
