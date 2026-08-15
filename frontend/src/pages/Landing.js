@@ -33,10 +33,12 @@ const howSteps = [
   { icon: Gauge, title: "Track Your Progress", desc: "Mark lessons complete and watch your progress grow on your dashboard." },
 ];
 
+const WA_ENROLL = "https://wa.me/917777930377?text=" + encodeURIComponent("Hi, I'd like to enrol in the TradeAcademy stock market course. Please share the details.");
+
 const pricing = [
   { name: "Free", price: "₹0", tag: "Included", features: ["Access to intro modules", "Personal dashboard", "Progress tracking", "Community updates"], cta: "Login", to: "/login", highlight: false },
-  { name: "Full Course", price: "Coming Soon", tag: "Most popular", features: ["All 18 modules", "Every lesson & objective", "Downloadable resources", "Live session access"], cta: "Notify Me", to: "/contact", highlight: true },
-  { name: "Premium / Advanced", price: "Coming Soon", tag: "For serious learners", features: ["Everything in Full Course", "Advanced strategy modules", "Priority live Q&A", "1:1 mentorship (planned)"], cta: "Notify Me", to: "/contact", highlight: false },
+  { name: "Full Course", price: "₹3,999", tag: "Most popular", features: ["All 18 modules", "Every lesson & objective", "Downloadable resources", "Live session access"], cta: "Enrol via WhatsApp", to: WA_ENROLL, external: true, highlight: true },
+  { name: "Premium / Advanced", price: "₹6,999", tag: "For serious learners", features: ["Everything in Full Course", "Advanced strategy modules", "Priority live Q&A", "1:1 mentorship"], cta: "Enrol via WhatsApp", to: WA_ENROLL, external: true, highlight: false },
 ];
 
 const faqs = [
@@ -240,13 +242,20 @@ export default function Landing() {
                   <li key={f} className="flex items-start gap-2 text-sm text-slate-300"><CheckCircle2 className="w-4 h-4 text-emerald mt-0.5 shrink-0" /> {f}</li>
                 ))}
               </ul>
-              <Link to={p.to} className={`block text-center font-semibold px-5 py-3 rounded-full ${p.highlight ? "btn-emerald" : "border border-white/15 hover:border-emerald/50 transition-colors"}`}>
-                {p.cta}
-              </Link>
+              {p.external ? (
+                <a href={p.to} target="_blank" rel="noopener noreferrer" data-testid={`pricing-cta-${i}`}
+                  className={`block text-center font-semibold px-5 py-3 rounded-full ${p.highlight ? "btn-emerald" : "border border-white/15 hover:border-emerald/50 transition-colors"}`}>
+                  {p.cta}
+                </a>
+              ) : (
+                <Link to={p.to} data-testid={`pricing-cta-${i}`} className={`block text-center font-semibold px-5 py-3 rounded-full ${p.highlight ? "btn-emerald" : "border border-white/15 hover:border-emerald/50 transition-colors"}`}>
+                  {p.cta}
+                </Link>
+              )}
             </motion.div>
           ))}
         </div>
-        <p className="text-center text-xs text-slate-500 mt-6">Payment processing is not yet active. Paid plans will open once a payment provider is configured.</p>
+        <p className="text-center text-xs text-slate-500 mt-6">To enrol in a paid plan, message us on WhatsApp — we'll create your account and share your login details.</p>
       </Section>
 
       {/* TESTIMONIALS */}
