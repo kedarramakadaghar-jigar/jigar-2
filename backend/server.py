@@ -170,6 +170,8 @@ async def login(body: LoginIn):
     if not u or not u.get("password_hash") or not verify_pw(body.password, u["password_hash"]):
         raise HTTPException(401, "Invalid email or password")
     return {"token": make_jwt(u["user_id"]), "user": public_user(u)}
+
+@api.get("/auth/me")
 async def me(request: Request):
     u = await current_user(request)
     return public_user(u)
