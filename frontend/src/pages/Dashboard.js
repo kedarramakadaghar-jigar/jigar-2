@@ -32,6 +32,18 @@ export default function Dashboard() {
           <h1 className="font-heading text-3xl sm:text-4xl font-extrabold" data-testid="dashboard-welcome">
             Welcome back, {user?.name?.split(" ")[0]} 👋
           </h1>
+          <div className="mt-3">
+            {user?.plan === "premium" || user?.plan === "full" || user?.role === "admin" ? (
+              <span className="inline-flex items-center gap-2 text-sm text-emerald border border-emerald/40 rounded-full px-4 py-1.5" data-testid="dashboard-plan-badge">
+                <Trophy className="w-4 h-4" /> {user?.role === "admin" ? "Admin — full access" : user?.plan === "premium" ? "Premium / Advanced — full access" : "Full Course — full access"}
+              </span>
+            ) : (
+              <div className="inline-flex flex-wrap items-center gap-3 rounded-full border border-emerald/40 bg-emerald/5 pl-4 pr-2 py-1.5" data-testid="dashboard-upgrade-cta">
+                <span className="text-sm text-slate-200">You're on the Free plan — unlock all 18 modules.</span>
+                <button onClick={() => navigate("/#pricing")} className="btn-emerald text-xs font-semibold px-4 py-1.5 rounded-full">Enrol Now</button>
+              </div>
+            )}
+          </div>
         </motion.div>
 
         {/* Stats */}

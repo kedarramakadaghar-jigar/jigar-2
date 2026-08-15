@@ -1,14 +1,17 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { CheckCircle2, ChevronLeft, ChevronRight, Target, ArrowLeft, PlayCircle } from "lucide-react";
+import { CheckCircle2, ChevronLeft, ChevronRight, Target, ArrowLeft, PlayCircle, Lock } from "lucide-react";
 import { toast } from "sonner";
 import api from "@/lib/api";
+import { useAuth } from "@/context/AuthContext";
 
 export default function LessonView() {
   const { lessonId } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [course, setCourse] = useState(null);
   const [completedIds, setCompletedIds] = useState([]);
+  const hasPlan = user && (user.plan === "full" || user.plan === "premium" || user.role === "admin");
 
   const load = useCallback(async () => {
     const [c, p] = await Promise.all([
@@ -45,6 +48,24 @@ export default function LessonView() {
   };
 
   if (!lesson) return <div className="pt-32 text-center text-slate-500 min-h-screen">Loading lesson…</div>;
+
+  if (!lesson.is_free && !hasPlan) {
+    return (
+      <div className="pt-16 relative z-10 min-h-screen flex items-center justify-center px-5">
+        <div className="max-w-md w-full rounded-2xl border border-white/10 bg-navy-2 p-10 text-center" data-testid="lesson-locked">
+          <div className="w-16 h-16 rounded-full bg-emerald/15 flex items-center justify-center mx-auto mb-5">
+            <Lock className="w-8 h-8 text-emerald" />
+          </div>
+          <h1 className="font-heading text-2xl font-extrabold mb-2">This lesson is locked</h1>
+          <p className="text-slate-400 text-sm mb-6">Enrol in the Full Course to unlock <span className="text-slate-200 font-semibold">{lesson.title}</span> and all 18 modules.</p>
+          <div className="flex gap-3 justify-center">
+            <button onClick={() => navigate("/#pricing")} data-testid="lesson-enrol-btn" className="btn-emerald font-semibold px-6 py-3 rounded-full">Enrol Now</button>
+            <button onClick={() => navigate("/dashboard")} className="px-6 py-3 rounded-full border border-white/15 hover:border-emerald/50 transition-colors">Dashboard</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="pt-16 relative z-10 min-h-screen">

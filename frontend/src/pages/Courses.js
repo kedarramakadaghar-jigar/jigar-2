@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 import { PlayCircle, Lock, Clock, CheckCircle2, BookOpen } from "lucide-react";
 import api from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
@@ -19,9 +20,12 @@ export default function Courses() {
     if (user) api.get("/progress").then((r) => setCompleted(r.data.completed_ids)).catch(() => {});
   }, [user]);
 
+  const hasPlan = user && (user.plan === "full" || user.plan === "premium" || user.role === "admin");
+
   const openLesson = (lesson) => {
-    const locked = !lesson.is_free && !user;
-    if (locked) { navigate("/login"); return; }
+    if (lesson.is_free) { navigate(`/learn/${lesson.lesson_id}`); return; }
+    if (!user) { toast.info("Please log in to access this lesson."); navigate("/login"); return; }
+    if (!hasPlan) { toast.info("Enrol in the Full Course to unlock this lesson."); navigate("/#pricing"); return; }
     navigate(`/learn/${lesson.lesson_id}`);
   };
 
@@ -44,6 +48,16 @@ export default function Courses() {
               Log In to Start Learning
             </Link>
           )}
+          {user && !hasPlan && (
+            <Link to="/#pricing" className="btn-emerald inline-flex mt-8 font-semibold px-6 py-3 rounded-full" data-testid="courses-enrol-cta">
+              Enrol to Unlock All 18 Modules
+            </Link>
+          )}
+          {hasPlan && (
+            <span className="inline-flex items-center gap-2 mt-8 text-sm text-emerald border border-emerald/40 rounded-full px-4 py-2" data-testid="courses-enrolled-badge">
+              <CheckCircle2 className="w-4 h-4" /> You're enrolled — full access unlocked
+            </span>
+          )}
         </div>
       </section>
 
@@ -64,7 +78,7 @@ export default function Courses() {
                 <div className="space-y-2 pb-2">
                   {(m.lessons || []).map((l) => {
                     const isDone = completed.includes(l.lesson_id);
-                    const locked = !l.is_free && !user;
+                    const locked = !l.is_free && !hasPlan;
                     return (
                       <button key={l.lesson_id} onClick={() => openLesson(l)} data-testid={`lesson-${l.lesson_id}`}
                         className="w-full flex items-center gap-3 rounded-lg border border-white/10 p-3 text-left hover:border-emerald/40 transition-colors">

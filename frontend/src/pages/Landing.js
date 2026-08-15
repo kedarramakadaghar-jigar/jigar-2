@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
+import { toast } from "sonner";
 import {
   TrendingUp, ArrowRight, CandlestickChart, ShieldCheck, GraduationCap, Layers,
   Gauge, Radio, CheckCircle2, Star, BarChart3, LineChart, Brain, Target, Clock,
 } from "lucide-react";
 import api from "@/lib/api";
+import { useAuth } from "@/context/AuthContext";
 import {
   Accordion, AccordionContent, AccordionItem, AccordionTrigger,
 } from "@/components/ui/accordion";
@@ -36,9 +38,9 @@ const howSteps = [
 const WA_ENROLL = "https://wa.me/917777930377?text=" + encodeURIComponent("Hi, I'd like to enrol in the TradeAcademy stock market course. Please share the details.");
 
 const pricing = [
-  { name: "Free", price: "₹0", original: null, save: null, tag: "Included", features: ["Access to intro modules", "Personal dashboard", "Progress tracking", "Community updates"], cta: "Login", to: "/login", highlight: false },
-  { name: "Full Course", price: "₹3,999", original: "₹9,999", save: "60% OFF", tag: "Most popular", features: ["All 18 modules", "Every lesson & objective", "Downloadable resources", "Live session access"], cta: "Enrol via WhatsApp", to: WA_ENROLL, external: true, highlight: true },
-  { name: "Premium / Advanced", price: "₹6,999", original: "₹14,999", save: "53% OFF", tag: "For serious learners", features: ["Everything in Full Course", "Advanced strategy modules", "Priority live Q&A", "1:1 mentorship"], cta: "Enrol via WhatsApp", to: WA_ENROLL, external: true, highlight: false },
+  { name: "Free", price: "₹0", original: null, save: null, tag: "Included", features: ["Access to intro modules", "Personal dashboard", "Progress tracking", "Community updates"], cta: "Login", packageId: null, highlight: false },
+  { name: "Full Course", price: "₹3,999", original: "₹9,999", save: "60% OFF", tag: "Most popular", features: ["All 18 modules", "Every lesson & objective", "Downloadable resources", "Live session access"], cta: "Enrol Now", packageId: "full_course", highlight: true },
+  { name: "Premium / Advanced", price: "₹6,999", original: "₹14,999", save: "53% OFF", tag: "For serious learners", features: ["Everything in Full Course", "Advanced strategy modules", "Priority live Q&A", "1:1 mentorship"], cta: "Enrol Now", packageId: "premium", highlight: false },
 ];
 
 const faqs = [
@@ -57,6 +59,9 @@ const faqs = [
 export default function Landing() {
   const [testimonials, setTestimonials] = useState([]);
   const [course, setCourse] = useState(null);
+  const [loadingPkg, setLoadingPkg] = useState(null);
+  const { user } = useAuth();
+  const navigate = useNavigate();
 
   useEffect(() => {
     document.title = "Stock Market Learning Course | Basic to Advanced Trading Education";
@@ -67,6 +72,27 @@ export default function Landing() {
       if (el) setTimeout(() => el.scrollIntoView({ behavior: "smooth" }), 300);
     }
   }, []);
+
+  const startCheckout = async (packageId) => {
+    if (!user) {
+      toast.info("Please log in to enrol. New here? Contact us on WhatsApp for access.");
+      navigate("/login");
+      return;
+    }
+    if (user.plan === "full" || user.plan === "premium") {
+      toast.success("You're already enrolled — head to your dashboard to keep learning!");
+      navigate("/dashboard");
+      return;
+    }
+    setLoadingPkg(packageId);
+    try {
+      const { data } = await api.post("/payments/checkout", { package_id: packageId, origin_url: window.location.origin });
+      window.location.href = data.checkout_url;
+    } catch (err) {
+      toast.error(err.response?.data?.detail || "Could not start checkout. Please try again.");
+      setLoadingPkg(null);
+    }
+  };
 
   return (
     <div className="pt-16">
@@ -246,20 +272,20 @@ export default function Landing() {
                   <li key={f} className="flex items-start gap-2 text-sm text-slate-300"><CheckCircle2 className="w-4 h-4 text-emerald mt-0.5 shrink-0" /> {f}</li>
                 ))}
               </ul>
-              {p.external ? (
-                <a href={p.to} target="_blank" rel="noopener noreferrer" data-testid={`pricing-cta-${i}`}
-                  className={`block text-center font-semibold px-5 py-3 rounded-full ${p.highlight ? "btn-emerald" : "border border-white/15 hover:border-emerald/50 transition-colors"}`}>
-                  {p.cta}
-                </a>
+              {p.packageId ? (
+                <button onClick={() => startCheckout(p.packageId)} disabled={loadingPkg === p.packageId} data-testid={`pricing-cta-${i}`}
+                  className={`block w-full text-center font-semibold px-5 py-3 rounded-full disabled:opacity-60 ${p.highlight ? "btn-emerald" : "border border-white/15 hover:border-emerald/50 transition-colors"}`}>
+                  {loadingPkg === p.packageId ? "Redirecting…" : p.cta}
+                </button>
               ) : (
-                <Link to={p.to} data-testid={`pricing-cta-${i}`} className={`block text-center font-semibold px-5 py-3 rounded-full ${p.highlight ? "btn-emerald" : "border border-white/15 hover:border-emerald/50 transition-colors"}`}>
+                <Link to="/login" data-testid={`pricing-cta-${i}`} className={`block text-center font-semibold px-5 py-3 rounded-full ${p.highlight ? "btn-emerald" : "border border-white/15 hover:border-emerald/50 transition-colors"}`}>
                   {p.cta}
                 </Link>
               )}
             </motion.div>
           ))}
         </div>
-        <p className="text-center text-xs text-slate-500 mt-6">To enrol in a paid plan, message us on WhatsApp — we'll create your account and share your login details.</p>
+        <p className="text-center text-xs text-slate-500 mt-6">Secure checkout powered by Stripe. New here? <a href={WA_ENROLL} target="_blank" rel="noopener noreferrer" className="text-emerald hover:underline">Message us on WhatsApp</a> to get your login, then enrol from your account.</p>
       </Section>
 
       {/* TESTIMONIALS */}

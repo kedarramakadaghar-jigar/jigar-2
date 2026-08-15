@@ -35,7 +35,7 @@ export default function Admin() {
   const [userQuery, setUserQuery] = useState("");
   const [pendingRole, setPendingRole] = useState(null); // { user, role }
   const [newUserOpen, setNewUserOpen] = useState(false);
-  const [newUser, setNewUser] = useState({ name: "", email: "", password: "", role: "student" });
+  const [newUser, setNewUser] = useState({ name: "", email: "", password: "", role: "student", plan: "" });
   const [resetTarget, setResetTarget] = useState(null); // user
   const [resetPw, setResetPw] = useState("");
   const [pendingDelete, setPendingDelete] = useState(null); // user
@@ -78,7 +78,7 @@ export default function Admin() {
       await api.post("/admin/users", newUser);
       toast.success(`Account created for ${newUser.name}`);
       setNewUserOpen(false);
-      setNewUser({ name: "", email: "", password: "", role: "student" });
+      setNewUser({ name: "", email: "", password: "", role: "student", plan: "" });
       loadAll();
     } catch (err) {
       toast.error(err.response?.data?.detail || "Could not create account");
@@ -174,6 +174,15 @@ export default function Admin() {
                       <Switch checked={newUser.role === "admin"} onCheckedChange={(v) => setNewUser({ ...newUser, role: v ? "admin" : "student" })} />
                       <Label className="text-slate-300">Make this an admin account</Label>
                     </div>
+                    <div>
+                      <Label className="text-slate-300">Course access</Label>
+                      <select value={newUser.plan} onChange={(e) => setNewUser({ ...newUser, plan: e.target.value })} data-testid="new-user-plan"
+                        className="mt-1.5 w-full bg-navy border border-white/10 rounded-md px-3 py-2 text-sm">
+                        <option value="">Free (intro modules only)</option>
+                        <option value="full">Full Course (all 18 modules)</option>
+                        <option value="premium">Premium / Advanced</option>
+                      </select>
+                    </div>
                     <p className="text-xs text-slate-500">Share these credentials with the student. They can change their password after logging in.</p>
                   </div>
                   <DialogFooter><button onClick={createUser} data-testid="new-user-save" className="btn-emerald font-semibold px-5 py-2 rounded-full">Create Account</button></DialogFooter>
@@ -183,7 +192,7 @@ export default function Admin() {
             <div className="rounded-xl border border-white/10 bg-navy-2 overflow-x-auto">
               <table className="w-full text-sm">
                 <thead><tr className="text-left text-slate-400 border-b border-white/10">
-                  <th className="p-4">Name</th><th className="p-4">Email</th><th className="p-4">Role</th><th className="p-4">Progress</th><th className="p-4 text-right">Actions</th>
+                  <th className="p-4">Name</th><th className="p-4">Email</th><th className="p-4">Role</th><th className="p-4">Plan</th><th className="p-4">Progress</th><th className="p-4 text-right">Actions</th>
                 </tr></thead>
                 <tbody>
                   {filteredUsers.map((u) => (
@@ -191,6 +200,11 @@ export default function Admin() {
                       <td className="p-4 font-medium">{u.name}</td>
                       <td className="p-4 text-slate-400">{u.email}</td>
                       <td className="p-4"><span className={`text-xs px-2 py-1 rounded-full ${u.role === "admin" ? "bg-emerald/20 text-emerald" : "bg-white/5 text-slate-300"}`}>{u.role}</span></td>
+                      <td className="p-4">
+                        <span className={`text-xs px-2 py-1 rounded-full ${u.plan ? "bg-emerald/15 text-emerald" : "bg-white/5 text-slate-400"}`}>
+                          {u.plan === "premium" ? "Premium" : u.plan === "full" ? "Full" : "Free"}
+                        </span>
+                      </td>
                       <td className="p-4 font-mono text-slate-300">{u.progress.completed}/{u.progress.total} ({u.progress.percentage}%)</td>
                       <td className="p-4">
                         <div className="flex items-center justify-end gap-2">
@@ -222,7 +236,7 @@ export default function Admin() {
                     </tr>
                   ))}
                   {filteredUsers.length === 0 && (
-                    <tr><td colSpan={5} className="p-8 text-center text-slate-500">No users match "{userQuery}".</td></tr>
+                    <tr><td colSpan={6} className="p-8 text-center text-slate-500">No users match "{userQuery}".</td></tr>
                   )}
                 </tbody>
               </table>

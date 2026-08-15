@@ -7,6 +7,7 @@ from pathlib import Path
 from pydantic import BaseModel, EmailStr, Field
 from typing import List, Optional
 from datetime import datetime, timezone, timedelta
+from emergentintegrations.payments.stripe.checkout import StripeCheckout, CheckoutSessionRequest
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -41,7 +42,7 @@ def make_jwt(user_id: str) -> str:
     return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGO)
 
 def public_user(u: dict) -> dict:
-    return {k: u.get(k) for k in ["user_id", "name", "email", "role", "picture", "auth_provider", "created_at"]}
+    return {k: u.get(k) for k in ["user_id", "name", "email", "role", "picture", "auth_provider", "created_at", "plan"]}
 
 
 # ----------------- Models -----------------
@@ -238,10 +239,16 @@ async def course_full(course_id: str):
     return course
 
 @api.get("/lessons/{lesson_id}")
-async def get_lesson(lesson_id: str):
+async def get_lesson(lesson_id: str, request: Request):
     l = await db.lessons.find_one({"lesson_id": lesson_id}, {"_id": 0})
     if not l:
         raise HTTPException(404, "Lesson not found")
+    if not l.get("is_free"):
+        u = await resolve_user(await get_token(request))
+        if not u:
+            raise HTTPException(401, "Please log in to access this lesson")
+        if u.get("role") != "admin" and u.get("plan") not in ("full", "premium"):
+            raise HTTPException(403, "This lesson requires the Full Course. Please enrol to unlock it.")
     return l
 
 
@@ -291,6 +298,94 @@ async def contact(body: ContactIn):
     return {"ok": True, "message": "Thanks for reaching out! We'll get back to you soon."}
 
 
+# ----------------- Payments (Stripe test mode via Emergent) -----------------
+# Fixed server-side packages. Frontend never sends amounts — only package_id.
+PACKAGES = {
+    "full_course": {"amount": 3999.0, "currency": "inr", "plan": "full", "name": "Full Course"},
+    "premium": {"amount": 6999.0, "currency": "inr", "plan": "premium", "name": "Premium / Advanced"},
+}
+
+class CheckoutIn(BaseModel):
+    package_id: str
+    origin_url: str
+
+def _stripe(request: Request) -> StripeCheckout:
+    host = str(request.base_url)
+    return StripeCheckout(api_key=os.environ["STRIPE_API_KEY"], webhook_url=f"{host}api/webhook/stripe")
+
+async def _grant_plan(session_id: str):
+    """Idempotently mark the buyer's account with the purchased plan once paid."""
+    tx = await db.payment_transactions.find_one({"session_id": session_id})
+    if tx and tx.get("payment_status") == "paid" and tx.get("user_id") and tx.get("plan"):
+        await db.users.update_one({"user_id": tx["user_id"]}, {"$set": {"plan": tx["plan"]}})
+
+@api.post("/payments/checkout")
+async def create_checkout(body: CheckoutIn, request: Request):
+    user = await current_user(request)
+    pkg = PACKAGES.get(body.package_id)
+    if not pkg:
+        raise HTTPException(400, "Invalid package")
+    # Guard: block re-purchase of the same-or-lower plan (premium is highest).
+    current = user.get("plan")
+    if current == "premium" or (current == "full" and pkg["plan"] == "full"):
+        raise HTTPException(400, "You already have access to this plan.")
+    sc = _stripe(request)
+    origin = body.origin_url.rstrip("/")
+    req = CheckoutSessionRequest(
+        amount=pkg["amount"], currency=pkg["currency"],
+        success_url=f"{origin}/payment/success?session_id={{CHECKOUT_SESSION_ID}}",
+        cancel_url=f"{origin}/payment/cancel",
+        metadata={"user_id": user["user_id"], "package_id": body.package_id, "plan": pkg["plan"]},
+    )
+    session = await sc.create_checkout_session(req)
+    await db.payment_transactions.insert_one({
+        "session_id": session.session_id, "user_id": user["user_id"],
+        "package_id": body.package_id, "plan": pkg["plan"],
+        "amount": pkg["amount"], "currency": pkg["currency"],
+        "status": "initiated", "payment_status": "pending",
+        "created_at": now_utc().isoformat(), "updated_at": now_utc().isoformat(),
+    })
+    return {"checkout_url": session.url, "session_id": session.session_id}
+
+@api.get("/payments/status/{session_id}")
+async def payment_status(session_id: str, request: Request):
+    record = await db.payment_transactions.find_one({"session_id": session_id}, {"_id": 0})
+    if not record:
+        raise HTTPException(404, "Transaction not found")
+    if record.get("payment_status") != "paid":
+        try:
+            sc = _stripe(request)
+            s = await sc.get_checkout_status(session_id)
+            if s.payment_status == "paid" or s.status == "complete":
+                await db.payment_transactions.update_one(
+                    {"session_id": session_id, "payment_status": {"$ne": "paid"}},
+                    {"$set": {"status": "completed", "payment_status": "paid", "updated_at": now_utc().isoformat()}})
+                await _grant_plan(session_id)
+                record = await db.payment_transactions.find_one({"session_id": session_id}, {"_id": 0})
+        except Exception as e:
+            logger.warning(f"stripe status check failed: {e}")
+    return {"session_id": record["session_id"], "status": record["status"],
+            "payment_status": record["payment_status"], "plan": record.get("plan"),
+            "amount": record.get("amount"), "currency": record.get("currency")}
+
+@api.post("/webhook/stripe")
+async def stripe_webhook(request: Request):
+    body = await request.body()
+    sig = request.headers.get("Stripe-Signature", "")
+    sc = _stripe(request)
+    try:
+        result = await sc.handle_webhook(body, sig)
+    except Exception as e:
+        logger.warning(f"webhook error: {e}")
+        raise HTTPException(400, "Invalid webhook")
+    if result.session_id and result.payment_status == "paid":
+        await db.payment_transactions.update_one(
+            {"session_id": result.session_id, "payment_status": {"$ne": "paid"}},
+            {"$set": {"status": "completed", "payment_status": "paid", "updated_at": now_utc().isoformat()}})
+        await _grant_plan(result.session_id)
+    return {"status": "ok"}
+
+
 # ----------------- Admin -----------------
 @api.get("/admin/stats")
 async def admin_stats(admin: dict = Depends(admin_user)):
@@ -323,6 +418,7 @@ class AdminCreateUser(BaseModel):
     email: EmailStr
     password: str
     role: str = "student"
+    plan: Optional[str] = None
 
 class AdminResetPassword(BaseModel):
     new_password: str
@@ -331,6 +427,8 @@ class AdminResetPassword(BaseModel):
 async def admin_create_user(body: AdminCreateUser, admin: dict = Depends(admin_user)):
     if body.role not in ("admin", "student"):
         raise HTTPException(400, "Invalid role")
+    if body.plan not in (None, "", "full", "premium"):
+        raise HTTPException(400, "Invalid plan")
     if len(body.password) < 6:
         raise HTTPException(400, "Password must be at least 6 characters")
     if await db.users.find_one({"email": body.email.lower()}):
@@ -339,10 +437,24 @@ async def admin_create_user(body: AdminCreateUser, admin: dict = Depends(admin_u
     doc = {
         "user_id": uid, "name": body.name, "email": body.email.lower(),
         "password_hash": hash_pw(body.password), "role": body.role,
-        "picture": "", "auth_provider": "password", "created_at": now_utc().isoformat(),
+        "plan": body.plan or None, "picture": "", "auth_provider": "password",
+        "created_at": now_utc().isoformat(),
     }
     await db.users.insert_one(doc)
     return public_user(doc)
+
+class PlanIn(BaseModel):
+    plan: Optional[str] = None
+
+@api.put("/admin/users/{user_id}/plan")
+async def admin_set_plan(user_id: str, body: PlanIn, admin: dict = Depends(admin_user)):
+    if body.plan not in (None, "", "full", "premium"):
+        raise HTTPException(400, "Invalid plan")
+    target = await db.users.find_one({"user_id": user_id})
+    if not target:
+        raise HTTPException(404, "User not found")
+    await db.users.update_one({"user_id": user_id}, {"$set": {"plan": body.plan or None}})
+    return {"ok": True, "plan": body.plan or None}
 
 @api.post("/admin/users/{user_id}/reset-password")
 async def admin_reset_password(user_id: str, body: AdminResetPassword, admin: dict = Depends(admin_user)):

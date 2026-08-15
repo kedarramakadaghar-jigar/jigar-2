@@ -121,7 +121,7 @@ async def seed_all(db, hash_pw):
     if not await db.users.find_one({"email": "student@demo.com"}):
         await db.users.insert_one({
             "user_id": "user_demostudent", "name": "Demo Student", "email": "student@demo.com",
-            "password_hash": hash_pw("Demo1234"), "role": "student", "picture": "",
+            "password_hash": hash_pw("Demo1234"), "role": "student", "picture": "", "plan": "full",
             "auth_provider": "password", "created_at": datetime.now(timezone.utc).isoformat(),
         })
         # give demo student some completed lessons

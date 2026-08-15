@@ -1,0 +1,34 @@
+{
+  "summary": "Full backend + frontend regression for the new Stripe TEST-MODE payments feature. Backend pytest suite refactored to remove obsolete register/forgot tests and added coverage for: /auth/me returns plan, POST /payments/checkout (auth/invalid pkg/full_course/premium/status), GET /payments/status (pending + 404), lesson gating (free no-auth 200, paid no-auth 401, paid full-plan 200, paid no-plan-student 403), admin create with plan + PUT plan (full/premium/clear/invalid) + student forbidden. Result: 17/17 tests pass. Frontend: pricing-cta-1 while logged-out redirects to /login; full-plan demo student sees dashboard-plan-badge ('Full Course - full access'), courses-enrolled-badge ('You're enrolled - full access unlocked'), and paid lesson les_05_1 opens; a freshly-admin-created no-plan student sees data-testid=lesson-locked on /learn/les_05_1 and the free lesson /learn/les_01_1 plays normally; clicking Enrol Now on Full Course while logged-in-no-plan successfully redirects to Stripe Checkout (Sandbox) showing INR 3,999.00 and a valid card form. Actual card charge (4242...) not automated end-to-end because that requires driving Stripe's hosted checkout form and waiting for webhook - the /payments/status inline fallback is covered by backend tests and the redirect + polling page load correctly.",
+  "backend_issues": { "critical": [], "minor": [] },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Contact form (carried over from iter 1)", "issues": ["Contact inputs still have white background inside dark theme - low visual consistency."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/backend_test.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [
+    "None blocking. Optionally: on Dashboard the plan badge takes ~1s after login to render (React state); acceptable but could show a skeleton. Optionally auto-run Stripe test-card completion in a Playwright job to fully validate /payment/success polling -> plan grant -> /auth/me update."
+  ],
+  "critical_code_review_comments": [
+    "server.py _grant_plan is idempotent via find + set (good). Consider using a single atomic $set with a filter on payment_status='paid' to avoid two round-trips.",
+    "server.py /payments/checkout does not verify that the buyer isn't already on the same-or-higher plan; a user with plan 'full' can still start a new checkout for full_course (buys again). UX ok because Landing.js short-circuits with a toast, but server side has no guard - consider returning 400 or a benign response.",
+    "PACKAGES amounts hardcoded to floats sent to Stripe; Stripe expects integer minor-units. emergentintegrations library appears to be handling INR paise conversion, but any change of currency should be re-tested.",
+    "server.py get_lesson returns 401 for unauth on paid lesson - correct - but the error message reveals the pay-wall reason to unauth users; fine for UX.",
+    "Landing.js pricing-cta-0 (Free) also routes to /login when logged out - request said pricing-cta-0 is 'Free->login', verified.",
+    "PaymentSuccess.js should have a hard timeout on polling (e.g., 30s) to avoid infinite spinner if Stripe webhook + inline fallback both fail; verify UX (not tested end-to-end)."
+  ],
+  "updated_files": ["/app/backend/tests/backend_test.py"],
+  "success_rate": { "backend": "100% (17/17)", "frontend": "100% of tested flows" },
+  "test_credentials": "admin@demo.com / Admin1234; student@demo.com / Demo1234 (plan full). No-plan users created dynamically via POST /api/admin/users during tests and cleaned up after.",
+  "seed_data_creation": "None new. Uses existing seed (course_main + 18 modules, les_01_1 free, les_05_1 paid).",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Backend tests at /app/backend/tests/backend_test.py - run with: cd /app && REACT_APP_BACKEND_URL=$(grep REACT_APP_BACKEND_URL frontend/.env|cut -d= -f2) python -m pytest backend/tests/backend_test.py -v. Payments tested against real Stripe TEST mode via emergentintegrations; each test creates a new checkout session (no cleanup - accepted for test key). End-to-end card-completion on Stripe was not automated - drive the checkout iframe manually or use Stripe API to complete PaymentIntent if you need to test the /payment/success polling + plan-grant. The dashboard-plan-badge takes ~1-2s to render after login; wait_for_timeout(2000) before querying.",
+  "rca of the issue": "N/A - no bugs found."
+}

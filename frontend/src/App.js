@@ -16,6 +16,8 @@ import Dashboard from "@/pages/Dashboard";
 import LessonView from "@/pages/LessonView";
 import Profile from "@/pages/Profile";
 import Admin from "@/pages/Admin";
+import PaymentSuccess from "@/pages/PaymentSuccess";
+import PaymentCancel from "@/pages/PaymentCancel";
 
 function SiteLayout() {
   return (
@@ -45,6 +47,8 @@ function AppRouter() {
         <Route path="/admin" element={<ProtectedRoute adminOnly><Admin /></ProtectedRoute>} />
       </Route>
       <Route path="/login" element={<Login />} />
+      <Route path="/payment/success" element={<ProtectedRoute><PaymentSuccess /></ProtectedRoute>} />
+      <Route path="/payment/cancel" element={<ProtectedRoute><PaymentCancel /></ProtectedRoute>} />
       <Route path="/register" element={<Navigate to="/login" replace />} />
       <Route path="/forgot-password" element={<Navigate to="/login" replace />} />
     </Routes>

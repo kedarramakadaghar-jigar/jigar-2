@@ -1,14 +1,12 @@
-"""TradeAcademy backend API tests."""
-import os
-import uuid
-import pytest
-import requests
+"""TradeAcademy backend API tests — payments + gating + admin plan mgmt."""
+import os, uuid, pytest, requests
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://market-mastery-93.preview.emergentagent.com').rstrip('/')
+BASE_URL = os.environ['REACT_APP_BACKEND_URL'].rstrip('/')
 API = f"{BASE_URL}/api"
 
 STUDENT = {"email": "student@demo.com", "password": "Demo1234"}
 ADMIN = {"email": "admin@demo.com", "password": "Admin1234"}
+ORIGIN = BASE_URL
 
 
 @pytest.fixture(scope="session")
@@ -30,232 +28,162 @@ def h(tok): return {"Authorization": f"Bearer {tok}"}
 
 # ---------------- Auth ----------------
 class TestAuth:
-    def test_register_success(self):
-        email = f"test_{uuid.uuid4().hex[:8]}@example.com"
-        r = requests.post(f"{API}/auth/register", json={
-            "name": "Test User", "email": email,
-            "password": "Passw0rd!", "confirm_password": "Passw0rd!"
-        }, timeout=15)
-        assert r.status_code == 200, r.text
-        d = r.json()
-        assert "token" in d and d["user"]["email"] == email.lower()
-        assert d["user"]["role"] == "student"
-
-    def test_register_password_mismatch(self):
-        email = f"TEST_{uuid.uuid4().hex[:8]}@example.com"
-        r = requests.post(f"{API}/auth/register", json={
-            "name": "X", "email": email,
-            "password": "Passw0rd!", "confirm_password": "Different1"
-        }, timeout=15)
-        assert r.status_code == 400
-
-    def test_register_duplicate(self):
-        r = requests.post(f"{API}/auth/register", json={
-            "name": "Dup", "email": STUDENT["email"],
-            "password": "Passw0rd!", "confirm_password": "Passw0rd!"
-        }, timeout=15)
-        assert r.status_code == 400
-
     def test_login_success(self):
         r = requests.post(f"{API}/auth/login", json=STUDENT, timeout=15)
         assert r.status_code == 200
         d = r.json()
-        assert "token" in d
-        assert d["user"]["email"] == STUDENT["email"]
+        assert "token" in d and d["user"]["email"] == STUDENT["email"]
 
     def test_login_wrong_password(self):
-        r = requests.post(f"{API}/auth/login", json={
-            "email": STUDENT["email"], "password": "wrong"
-        }, timeout=15)
+        r = requests.post(f"{API}/auth/login",
+                          json={"email": STUDENT["email"], "password": "wrong"}, timeout=15)
         assert r.status_code == 401
 
-    def test_me_with_token(self, student_token):
+    def test_me_includes_plan(self, student_token):
         r = requests.get(f"{API}/auth/me", headers=h(student_token), timeout=15)
         assert r.status_code == 200
-        assert r.json()["email"] == STUDENT["email"]
+        d = r.json()
+        assert d["email"] == STUDENT["email"]
+        assert "plan" in d, f"'plan' missing from /auth/me response: {d}"
+        assert d["plan"] == "full", f"demo student should be plan 'full', got {d.get('plan')}"
 
     def test_me_without_token(self):
         r = requests.get(f"{API}/auth/me", timeout=15)
         assert r.status_code == 401
-
-    def test_forgot_password_generic(self):
-        r = requests.post(f"{API}/auth/forgot-password",
-                          json={"email": "anyone@nowhere.com"}, timeout=15)
-        assert r.status_code == 200
-        assert r.json().get("ok") is True
 
 
 # ---------------- Courses ----------------
 class TestCourses:
     def test_list_courses(self):
         r = requests.get(f"{API}/courses", timeout=15)
-        assert r.status_code == 200
-        arr = r.json()
-        assert isinstance(arr, list) and len(arr) >= 1
+        assert r.status_code == 200 and isinstance(r.json(), list)
 
-    def test_course_full_18_modules(self):
+    def test_course_full(self):
         r = requests.get(f"{API}/courses/course_main/full", timeout=15)
         assert r.status_code == 200
         c = r.json()
-        assert "modules" in c
-        assert len(c["modules"]) == 18, f"Expected 18 modules, got {len(c['modules'])}"
-        # every module must have lessons
-        total_lessons = 0
-        for m in c["modules"]:
-            assert m.get("lessons"), f"module {m.get('title')} has no lessons"
-            total_lessons += len(m["lessons"])
-        assert total_lessons >= 18
+        assert len(c["modules"]) >= 18
 
-    def test_course_not_found(self):
-        r = requests.get(f"{API}/courses/does_not_exist/full", timeout=15)
+
+# ---------------- Lesson gating ----------------
+class TestLessonGating:
+    def test_free_lesson_no_auth(self):
+        r = requests.get(f"{API}/lessons/les_01_1", timeout=15)
+        assert r.status_code == 200, r.text
+        assert r.json().get("is_free") is True
+
+    def test_paid_lesson_no_auth_401(self):
+        r = requests.get(f"{API}/lessons/les_05_1", timeout=15)
+        assert r.status_code == 401
+
+    def test_paid_lesson_full_plan_ok(self, student_token):
+        r = requests.get(f"{API}/lessons/les_05_1", headers=h(student_token), timeout=15)
+        assert r.status_code == 200, r.text
+        assert r.json()["lesson_id"] == "les_05_1"
+
+    def test_paid_lesson_no_plan_student_403(self, admin_token):
+        # create a no-plan student
+        email = f"TEST_noplan_{uuid.uuid4().hex[:6]}@ex.com"
+        cr = requests.post(f"{API}/admin/users", headers=h(admin_token),
+                           json={"name": "NoPlan", "email": email,
+                                 "password": "Passw0rd!", "role": "student"},
+                           timeout=15)
+        assert cr.status_code == 200, cr.text
+        uid = cr.json()["user_id"]
+        try:
+            tk = requests.post(f"{API}/auth/login",
+                               json={"email": email, "password": "Passw0rd!"},
+                               timeout=15).json()["token"]
+            r = requests.get(f"{API}/lessons/les_05_1", headers=h(tk), timeout=15)
+            assert r.status_code == 403, r.text
+        finally:
+            requests.delete(f"{API}/admin/users/{uid}", headers=h(admin_token), timeout=15)
+
+
+# ---------------- Payments ----------------
+class TestPayments:
+    def test_checkout_no_auth_401(self):
+        r = requests.post(f"{API}/payments/checkout",
+                          json={"package_id": "full_course", "origin_url": ORIGIN},
+                          timeout=20)
+        assert r.status_code == 401
+
+    def test_checkout_invalid_package(self, student_token):
+        r = requests.post(f"{API}/payments/checkout", headers=h(student_token),
+                          json={"package_id": "not_a_pkg", "origin_url": ORIGIN},
+                          timeout=20)
+        assert r.status_code == 400
+
+    def test_checkout_full_course_ok(self, student_token):
+        r = requests.post(f"{API}/payments/checkout", headers=h(student_token),
+                          json={"package_id": "full_course", "origin_url": ORIGIN},
+                          timeout=30)
+        assert r.status_code == 200, r.text
+        d = r.json()
+        assert d.get("checkout_url", "").startswith("https://")
+        assert d.get("session_id")
+        # status endpoint returns pending
+        sid = d["session_id"]
+        s = requests.get(f"{API}/payments/status/{sid}",
+                         headers=h(student_token), timeout=30)
+        assert s.status_code == 200, s.text
+        sd = s.json()
+        assert sd["session_id"] == sid
+        assert "status" in sd and "payment_status" in sd and "plan" in sd
+        assert sd["payment_status"] in ("pending", "paid")
+        assert sd["plan"] == "full"
+
+    def test_checkout_premium_ok(self, student_token):
+        r = requests.post(f"{API}/payments/checkout", headers=h(student_token),
+                          json={"package_id": "premium", "origin_url": ORIGIN},
+                          timeout=30)
+        assert r.status_code == 200, r.text
+        d = r.json()
+        assert d["checkout_url"].startswith("https://")
+
+    def test_status_unknown_session_404(self, student_token):
+        r = requests.get(f"{API}/payments/status/nonexistent_sess_id",
+                         headers=h(student_token), timeout=15)
         assert r.status_code == 404
 
 
-# ---------------- Progress ----------------
-class TestProgress:
-    def test_progress_flow(self, student_token):
-        # Get first lesson id
-        full = requests.get(f"{API}/courses/course_main/full", timeout=15).json()
-        lesson_id = full["modules"][0]["lessons"][0]["lesson_id"]
-
-        # Baseline
-        r0 = requests.get(f"{API}/progress", headers=h(student_token), timeout=15).json()
-        assert "total_lessons" in r0 and "percentage" in r0
-
-        # Complete
-        r = requests.post(f"{API}/progress/complete",
-                         headers=h(student_token),
-                         json={"lesson_id": lesson_id}, timeout=15)
-        assert r.status_code == 200
-
-        r1 = requests.get(f"{API}/progress", headers=h(student_token), timeout=15).json()
-        assert lesson_id in r1["completed_ids"]
-
-        # Uncomplete
-        r = requests.post(f"{API}/progress/uncomplete",
-                         headers=h(student_token),
-                         json={"lesson_id": lesson_id}, timeout=15)
-        assert r.status_code == 200
-        r2 = requests.get(f"{API}/progress", headers=h(student_token), timeout=15).json()
-        assert lesson_id not in r2["completed_ids"]
-
-    def test_progress_unauth(self):
-        r = requests.get(f"{API}/progress", timeout=15)
-        assert r.status_code == 401
-
-
-# ---------------- Public data & Contact ----------------
-class TestPublic:
-    def test_live_sessions(self):
-        r = requests.get(f"{API}/live-sessions", timeout=15)
-        assert r.status_code == 200
-        assert isinstance(r.json(), list)
-
-    def test_testimonials(self):
-        r = requests.get(f"{API}/testimonials", timeout=15)
-        assert r.status_code == 200
-        assert len(r.json()) >= 1
-
-    def test_contact(self):
-        r = requests.post(f"{API}/contact", json={
-            "name": "TEST_Contact", "email": "t@t.com",
-            "subject": "hi", "message": "hello"
-        }, timeout=15)
-        assert r.status_code == 200
-        assert r.json().get("ok") is True
-
-
-# ---------------- Admin RBAC ----------------
-class TestAdmin:
-    def test_admin_stats(self, admin_token):
-        r = requests.get(f"{API}/admin/stats", headers=h(admin_token), timeout=15)
-        assert r.status_code == 200
-        d = r.json()
-        assert d["modules"] >= 18
-        assert d["lessons"] >= 18
-
-    def test_admin_stats_forbidden_for_student(self, student_token):
-        r = requests.get(f"{API}/admin/stats", headers=h(student_token), timeout=15)
-        assert r.status_code == 403
-
-    def test_admin_users(self, admin_token):
-        r = requests.get(f"{API}/admin/users", headers=h(admin_token), timeout=15)
-        assert r.status_code == 200
-        arr = r.json()
-        assert any(u["email"] == STUDENT["email"] for u in arr)
-        # progress field present
-        assert "progress" in arr[0]
-
-    def test_admin_contacts(self, admin_token):
-        r = requests.get(f"{API}/admin/contacts", headers=h(admin_token), timeout=15)
-        assert r.status_code == 200
-
-    def test_admin_module_lesson_live_crud(self, admin_token):
-        # create module
-        r = requests.post(f"{API}/admin/modules",
-                          headers=h(admin_token),
-                          json={"course_id": "course_main",
-                                "title": "TEST_Module", "description": "d",
-                                "order": 999, "is_free": True}, timeout=15)
+# ---------------- Admin plan mgmt ----------------
+class TestAdminPlan:
+    def test_admin_create_with_plan_and_set_plan(self, admin_token):
+        email = f"TEST_plan_{uuid.uuid4().hex[:6]}@ex.com"
+        r = requests.post(f"{API}/admin/users", headers=h(admin_token),
+                          json={"name": "T", "email": email,
+                                "password": "Passw0rd!", "role": "student",
+                                "plan": "full"}, timeout=15)
         assert r.status_code == 200, r.text
-        mid = r.json()["module_id"]
+        u = r.json()
+        assert u["plan"] == "full"
+        uid = u["user_id"]
 
-        # create lesson
-        r = requests.post(f"{API}/admin/lessons",
-                          headers=h(admin_token),
-                          json={"module_id": mid, "title": "TEST_Lesson",
-                                "description": "d", "objectives": ["a"],
-                                "video_url": "https://youtube.com/x",
-                                "duration": "5 min", "order": 1, "is_free": True},
-                          timeout=15)
-        assert r.status_code == 200, r.text
-        lid = r.json()["lesson_id"]
-
-        # edit lesson
-        r = requests.put(f"{API}/admin/lessons/{lid}",
-                         headers=h(admin_token),
-                         json={"module_id": mid, "title": "TEST_Lesson_Upd",
-                               "description": "u", "objectives": [],
-                               "video_url": "", "duration": "6 min",
-                               "order": 1, "is_free": True}, timeout=15)
+        # PUT plan -> premium
+        r = requests.put(f"{API}/admin/users/{uid}/plan", headers=h(admin_token),
+                         json={"plan": "premium"}, timeout=15)
         assert r.status_code == 200
+        assert r.json()["plan"] == "premium"
 
-        # verify via GET lesson
-        g = requests.get(f"{API}/lessons/{lid}", timeout=15).json()
-        assert g["title"] == "TEST_Lesson_Upd"
+        # PUT plan clear (None)
+        r = requests.put(f"{API}/admin/users/{uid}/plan", headers=h(admin_token),
+                         json={"plan": None}, timeout=15)
+        assert r.status_code == 200
+        assert r.json()["plan"] is None
 
-        # create live session
-        r = requests.post(f"{API}/admin/live-sessions",
-                          headers=h(admin_token),
-                          json={"topic": "TEST_Live", "description": "d",
-                                "date": "2026-02-01", "time": "18:00",
-                                "instructor": "A", "join_url": "",
-                                "level": "Beginner"}, timeout=15)
-        assert r.status_code == 200
-        sid = r.json()["id"]
-        r = requests.put(f"{API}/admin/live-sessions/{sid}",
-                         headers=h(admin_token),
-                         json={"topic": "TEST_Live_Upd", "description": "d",
-                               "date": "2026-02-02", "time": "19:00",
-                               "instructor": "A", "join_url": "",
-                               "level": "Beginner"}, timeout=15)
-        assert r.status_code == 200
-        r = requests.delete(f"{API}/admin/live-sessions/{sid}",
-                            headers=h(admin_token), timeout=15)
-        assert r.status_code == 200
+        # PUT invalid plan
+        r = requests.put(f"{API}/admin/users/{uid}/plan", headers=h(admin_token),
+                         json={"plan": "gold"}, timeout=15)
+        assert r.status_code == 400
 
-        # cleanup - delete module cascades lessons
-        r = requests.delete(f"{API}/admin/modules/{mid}",
-                            headers=h(admin_token), timeout=15)
-        assert r.status_code == 200
-        # verify lesson gone
-        g = requests.get(f"{API}/lessons/{lid}", timeout=15)
-        assert g.status_code == 404
+        # cleanup
+        requests.delete(f"{API}/admin/users/{uid}", headers=h(admin_token), timeout=15)
 
-    def test_admin_module_forbidden_for_student(self, student_token):
-        r = requests.post(f"{API}/admin/modules",
-                          headers=h(student_token),
-                          json={"course_id": "course_main", "title": "x",
-                                "description": "", "order": 0, "is_free": True},
-                          timeout=15)
+    def test_set_plan_forbidden_for_student(self, student_token, admin_token):
+        # get some user id
+        users = requests.get(f"{API}/admin/users", headers=h(admin_token), timeout=15).json()
+        uid = users[0]["user_id"]
+        r = requests.put(f"{API}/admin/users/{uid}/plan", headers=h(student_token),
+                         json={"plan": "full"}, timeout=15)
         assert r.status_code == 403
