@@ -6,6 +6,7 @@ import AuthCallback from "@/components/AuthCallback";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+import WhatsAppButton from "@/components/WhatsAppButton";
 import Landing from "@/pages/Landing";
 import Courses from "@/pages/Courses";
 import LiveSessions from "@/pages/LiveSessions";
@@ -55,6 +56,7 @@ export default function App() {
     <AuthProvider>
       <BrowserRouter>
         <AppRouter />
+        <WhatsAppButton />
         <Toaster position="top-right" theme="dark" richColors />
       </BrowserRouter>
     </AuthProvider>
