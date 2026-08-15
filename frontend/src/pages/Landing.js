@@ -251,6 +251,16 @@ export default function Landing() {
 
       {/* TESTIMONIALS */}
       <Section id="testimonials" overline="Testimonials" title="What learners say" dark>
+        <div className="flex items-center gap-3 -mt-6 mb-10" data-testid="trust-line">
+          <div className="flex -space-x-2">
+            {["A", "M", "S", "R", "P"].map((c, i) => (
+              <div key={i} className="w-8 h-8 rounded-full bg-emerald/20 text-emerald border-2 border-navy-2 flex items-center justify-center text-xs font-semibold">{c}</div>
+            ))}
+          </div>
+          <p className="text-sm text-slate-300">
+            <span className="text-emerald font-semibold">Trusted by 400+ learners across India</span> — rated 4.9 out of 5
+          </p>
+        </div>
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-5">
           {testimonials.map((t, i) => (
             <motion.div key={t.id} initial="hidden" whileInView="show" viewport={{ once: true }} custom={i} variants={fadeUp}
