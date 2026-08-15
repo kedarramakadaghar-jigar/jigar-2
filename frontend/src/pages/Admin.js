@@ -1,9 +1,10 @@
 import { useEffect, useState, useCallback } from "react";
 import { toast } from "sonner";
 import {
-  Users, BookOpen, Layers, PlayCircle, Radio, MessageSquare, Plus, Trash2, Pencil, Shield, Mail,
+  Users, BookOpen, Layers, PlayCircle, Radio, MessageSquare, Plus, Trash2, Pencil, Shield, Mail, ShieldCheck, ShieldOff,
 } from "lucide-react";
 import api from "@/lib/api";
+import { useAuth } from "@/context/AuthContext";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,6 +20,7 @@ const emptyLesson = { module_id: "", title: "", description: "", objectives: [],
 const emptyModule = { course_id: "course_main", title: "", description: "", order: 0, is_free: false };
 
 export default function Admin() {
+  const { user: me } = useAuth();
   const [stats, setStats] = useState({});
   const [users, setUsers] = useState([]);
   const [course, setCourse] = useState(null);
@@ -37,6 +39,16 @@ export default function Admin() {
   }, []);
 
   useEffect(() => { document.title = "Admin Panel | TradeAcademy"; loadAll(); }, [loadAll]);
+
+  const changeRole = async (userId, role) => {
+    try {
+      await api.put(`/admin/users/${userId}/role`, { role });
+      toast.success(role === "admin" ? "User promoted to admin" : "Admin access revoked");
+      loadAll();
+    } catch (err) {
+      toast.error(err.response?.data?.detail || "Could not update role");
+    }
+  };
 
   const statCards = [
     { icon: Users, label: "Users", value: stats.users }, { icon: BookOpen, label: "Courses", value: stats.courses },
@@ -79,7 +91,7 @@ export default function Admin() {
             <div className="rounded-xl border border-white/10 bg-navy-2 overflow-x-auto">
               <table className="w-full text-sm">
                 <thead><tr className="text-left text-slate-400 border-b border-white/10">
-                  <th className="p-4">Name</th><th className="p-4">Email</th><th className="p-4">Role</th><th className="p-4">Progress</th>
+                  <th className="p-4">Name</th><th className="p-4">Email</th><th className="p-4">Role</th><th className="p-4">Progress</th><th className="p-4 text-right">Actions</th>
                 </tr></thead>
                 <tbody>
                   {users.map((u) => (
@@ -88,6 +100,21 @@ export default function Admin() {
                       <td className="p-4 text-slate-400">{u.email}</td>
                       <td className="p-4"><span className={`text-xs px-2 py-1 rounded-full ${u.role === "admin" ? "bg-emerald/20 text-emerald" : "bg-white/5 text-slate-300"}`}>{u.role}</span></td>
                       <td className="p-4 font-mono text-slate-300">{u.progress.completed}/{u.progress.total} ({u.progress.percentage}%)</td>
+                      <td className="p-4 text-right">
+                        {u.user_id === me?.user_id ? (
+                          <span className="text-xs text-slate-600">You</span>
+                        ) : u.role === "admin" ? (
+                          <button onClick={() => changeRole(u.user_id, "student")} data-testid={`demote-${u.user_id}`}
+                            className="text-xs inline-flex items-center gap-1 px-3 py-1.5 rounded-full border border-white/15 text-slate-300 hover:border-red-400/50 hover:text-red-400 transition-colors">
+                            <ShieldOff className="w-3.5 h-3.5" /> Revoke Admin
+                          </button>
+                        ) : (
+                          <button onClick={() => changeRole(u.user_id, "admin")} data-testid={`promote-${u.user_id}`}
+                            className="text-xs inline-flex items-center gap-1 px-3 py-1.5 rounded-full border border-emerald/40 text-emerald hover:bg-emerald/10 transition-colors">
+                            <ShieldCheck className="w-3.5 h-3.5" /> Promote to Admin
+                          </button>
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>

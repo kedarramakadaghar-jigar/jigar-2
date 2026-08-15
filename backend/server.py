@@ -333,6 +333,21 @@ async def admin_users(admin: dict = Depends(admin_user)):
         u["progress"] = {"completed": done, "total": total, "percentage": round(done / total * 100) if total else 0}
     return users
 
+class RoleIn(BaseModel):
+    role: str
+
+@api.put("/admin/users/{user_id}/role")
+async def set_user_role(user_id: str, body: RoleIn, admin: dict = Depends(admin_user)):
+    if body.role not in ("admin", "student"):
+        raise HTTPException(400, "Invalid role")
+    if user_id == admin["user_id"]:
+        raise HTTPException(400, "You cannot change your own role")
+    target = await db.users.find_one({"user_id": user_id}, {"_id": 0})
+    if not target:
+        raise HTTPException(404, "User not found")
+    await db.users.update_one({"user_id": user_id}, {"$set": {"role": body.role}})
+    return {"ok": True, "user_id": user_id, "role": body.role}
+
 # Course CRUD
 @api.post("/admin/courses")
 async def create_course(body: CourseIn, admin: dict = Depends(admin_user)):

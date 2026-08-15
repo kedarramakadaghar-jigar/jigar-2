@@ -9,6 +9,7 @@
   --navy: #0A0F1C;
   --navy-2: #111827;
   --emerald: #10B981;
+  color-scheme: dark;
 }
 
 * { border-color: rgba(255,255,255,0.08); }
