@@ -13,6 +13,11 @@ import { Switch } from "@/components/ui/switch";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,
+  AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Search } from "lucide-react";
 
 const emptyLive = { topic: "", description: "", date: "", time: "", instructor: "", level: "All Levels", join_url: "" };
 const emptyTest = { name: "", role: "", content: "", rating: 5, avatar: "" };
@@ -27,6 +32,8 @@ export default function Admin() {
   const [live, setLive] = useState([]);
   const [tests, setTests] = useState([]);
   const [contacts, setContacts] = useState([]);
+  const [userQuery, setUserQuery] = useState("");
+  const [pendingRole, setPendingRole] = useState(null); // { user, role }
 
   const loadAll = useCallback(async () => {
     try {
@@ -47,8 +54,16 @@ export default function Admin() {
       loadAll();
     } catch (err) {
       toast.error(err.response?.data?.detail || "Could not update role");
+    } finally {
+      setPendingRole(null);
     }
   };
+
+  const filteredUsers = users.filter((u) => {
+    const q = userQuery.trim().toLowerCase();
+    if (!q) return true;
+    return u.name?.toLowerCase().includes(q) || u.email?.toLowerCase().includes(q) || u.role?.toLowerCase().includes(q);
+  });
 
   const statCards = [
     { icon: Users, label: "Users", value: stats.users }, { icon: BookOpen, label: "Courses", value: stats.courses },
@@ -88,13 +103,18 @@ export default function Admin() {
 
           {/* USERS */}
           <TabsContent value="users" className="mt-6">
+            <div className="relative mb-4 max-w-sm">
+              <Search className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
+              <Input value={userQuery} onChange={(e) => setUserQuery(e.target.value)} data-testid="user-search"
+                placeholder="Search by name, email or role…" className="pl-9 bg-navy-2 border-white/10" />
+            </div>
             <div className="rounded-xl border border-white/10 bg-navy-2 overflow-x-auto">
               <table className="w-full text-sm">
                 <thead><tr className="text-left text-slate-400 border-b border-white/10">
                   <th className="p-4">Name</th><th className="p-4">Email</th><th className="p-4">Role</th><th className="p-4">Progress</th><th className="p-4 text-right">Actions</th>
                 </tr></thead>
                 <tbody>
-                  {users.map((u) => (
+                  {filteredUsers.map((u) => (
                     <tr key={u.user_id} className="border-b border-white/5" data-testid={`user-row-${u.user_id}`}>
                       <td className="p-4 font-medium">{u.name}</td>
                       <td className="p-4 text-slate-400">{u.email}</td>
@@ -104,12 +124,12 @@ export default function Admin() {
                         {u.user_id === me?.user_id ? (
                           <span className="text-xs text-slate-600">You</span>
                         ) : u.role === "admin" ? (
-                          <button onClick={() => changeRole(u.user_id, "student")} data-testid={`demote-${u.user_id}`}
+                          <button onClick={() => setPendingRole({ user: u, role: "student" })} data-testid={`demote-${u.user_id}`}
                             className="text-xs inline-flex items-center gap-1 px-3 py-1.5 rounded-full border border-white/15 text-slate-300 hover:border-red-400/50 hover:text-red-400 transition-colors">
                             <ShieldOff className="w-3.5 h-3.5" /> Revoke Admin
                           </button>
                         ) : (
-                          <button onClick={() => changeRole(u.user_id, "admin")} data-testid={`promote-${u.user_id}`}
+                          <button onClick={() => setPendingRole({ user: u, role: "admin" })} data-testid={`promote-${u.user_id}`}
                             className="text-xs inline-flex items-center gap-1 px-3 py-1.5 rounded-full border border-emerald/40 text-emerald hover:bg-emerald/10 transition-colors">
                             <ShieldCheck className="w-3.5 h-3.5" /> Promote to Admin
                           </button>
@@ -117,9 +137,34 @@ export default function Admin() {
                       </td>
                     </tr>
                   ))}
+                  {filteredUsers.length === 0 && (
+                    <tr><td colSpan={5} className="p-8 text-center text-slate-500">No users match "{userQuery}".</td></tr>
+                  )}
                 </tbody>
               </table>
             </div>
+
+            <AlertDialog open={!!pendingRole} onOpenChange={(o) => !o && setPendingRole(null)}>
+              <AlertDialogContent className="bg-navy-2 border-white/10 text-white">
+                <AlertDialogHeader>
+                  <AlertDialogTitle>
+                    {pendingRole?.role === "admin" ? "Promote to admin?" : "Revoke admin access?"}
+                  </AlertDialogTitle>
+                  <AlertDialogDescription className="text-slate-400">
+                    {pendingRole?.role === "admin"
+                      ? <>This will give <span className="text-emerald font-semibold">{pendingRole?.user?.name}</span> ({pendingRole?.user?.email}) full admin access to manage courses, users and content.</>
+                      : <>This will remove admin access from <span className="text-slate-200 font-semibold">{pendingRole?.user?.name}</span> ({pendingRole?.user?.email}). They will become a regular student.</>}
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel data-testid="role-cancel" className="bg-transparent border-white/15 text-slate-200 hover:bg-white/5 hover:text-white">Cancel</AlertDialogCancel>
+                  <AlertDialogAction data-testid="role-confirm" onClick={() => changeRole(pendingRole.user.user_id, pendingRole.role)}
+                    className={pendingRole?.role === "admin" ? "bg-emerald text-navy hover:bg-emerald-600" : "bg-red-500 text-white hover:bg-red-600"}>
+                    {pendingRole?.role === "admin" ? "Promote" : "Revoke"}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </TabsContent>
 
           {/* LIVE */}
