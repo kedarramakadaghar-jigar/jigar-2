@@ -35,9 +35,9 @@ export default function Contact() {
               <span className="w-10 h-10 rounded-lg bg-emerald/15 flex items-center justify-center"><Mail className="w-5 h-5 text-emerald" /></span>
               hello@tradeacademy.com
             </a>
-            <a href="#" className="flex items-center gap-3 text-slate-200 hover:text-emerald transition-colors">
+            <a href="https://wa.me/917777930377?text=Hi%2C%20I%27d%20like%20to%20get%20access%20to%20the%20TradeAcademy%20stock%20market%20course." target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 text-slate-200 hover:text-emerald transition-colors">
               <span className="w-10 h-10 rounded-lg bg-emerald/15 flex items-center justify-center"><MessageCircle className="w-5 h-5 text-emerald" /></span>
-              WhatsApp: +91 00000 00000
+              WhatsApp: +91 77779 30377
             </a>
           </div>
           <div className="flex gap-3 mt-8">

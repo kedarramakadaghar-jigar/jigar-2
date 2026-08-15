@@ -40,7 +40,7 @@ export default function Footer() {
             <h4 className="overline text-emerald mb-4">Contact</h4>
             <ul className="space-y-3 text-sm text-slate-400">
               <li className="flex items-center gap-2"><Mail className="w-4 h-4 text-emerald" /> hello@tradeacademy.com</li>
-              <li className="flex items-center gap-2"><MessageCircle className="w-4 h-4 text-emerald" /> WhatsApp: +91 00000 00000</li>
+              <li className="flex items-center gap-2"><MessageCircle className="w-4 h-4 text-emerald" /> <a href="https://wa.me/917777930377" target="_blank" rel="noopener noreferrer" className="hover:text-emerald">WhatsApp: +91 77779 30377</a></li>
               <li><Link to="/contact" className="hover:text-emerald">Contact Form →</Link></li>
             </ul>
           </div>
